@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>เครื่องมือทางการแพทย์</title>
+<title>โชว์รูมเครื่องมือไตเทียม</title>
 <meta name="description" content="แคตตาล็อกเครื่องไตเทียมและระบบน้ำ RO เคลื่อนที่ พร้อมผลเพาะเชื้อ Endotoxin และการเปลี่ยน Bacteria filter">
 <meta name="theme-color" content="#0E2A3B">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -42,6 +42,7 @@ img{max-width:100%;display:block}
 .btn.danger{color:var(--alert)}
 .btn.small{padding:7px 12px;font-size:14px;border-radius:10px}
 .btn:disabled{opacity:.45;cursor:default}
+.modal-foot .btn{white-space:nowrap}
 .demo-banner{background:#FFF6D9;color:#6b5210;border-bottom:1px solid #f0dc9a;padding:9px clamp(16px,4vw,40px);font-size:14px}
 .demo-banner button{border:0;background:none;color:#8a5a00;text-decoration:underline;font-weight:600;padding:0}
 
@@ -196,7 +197,7 @@ dialog::backdrop{background:rgba(9,29,41,.55);backdrop-filter:blur(2px)}
 .modal-head h2{margin:0;font:600 21px/1.3 var(--display)}
 .modal-x{border:1px solid var(--line);background:#fff;border-radius:10px;width:40px;height:40px;font-size:18px}
 .modal-body{padding:18px 22px;overflow:auto;max-height:calc(92vh - 150px)}
-.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:14px 22px;border-top:1px solid var(--line);background:#fafcfd;position:sticky;bottom:0}
+.modal-foot{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px;padding:14px 22px;border-top:1px solid var(--line);background:#fafcfd;position:sticky;bottom:0}
 .form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .field{display:grid;gap:5px}
 .field.wide{grid-column:1/-1}
@@ -230,6 +231,15 @@ dialog::backdrop{background:rgba(9,29,41,.55);backdrop-filter:blur(2px)}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading{padding:60px 0;text-align:center;color:var(--muted)}
 footer{max-width:1280px;margin:0 auto;padding:0 clamp(16px,4vw,40px) 40px;color:var(--muted);font-size:13px}
+
+.model-status{position:absolute;left:50%;bottom:12%;transform:translateX(-50%);z-index:2;max-width:88%;text-align:center;background:rgba(6,24,34,.62);color:#dff3f9;border-radius:999px;padding:6px 14px;font-size:13.5px;line-height:1.4}
+.model-status.err{background:rgba(110,28,22,.8);border-radius:14px}
+.scan-preview{position:relative;height:320px;border-radius:16px;background:radial-gradient(110% 90% at 50% 40%,var(--stage-hi),var(--stage) 75%);display:grid;place-items:center;color:#cfe9f2;overflow:hidden}
+.scan-preview p{margin:0;padding:0 24px;text-align:center;font-size:14px}
+.scan-preview .preview-msg{position:absolute;left:12px;right:12px;bottom:12px;background:rgba(110,28,22,.8);border-radius:10px;padding:8px 12px}
+.preview-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:pan-y}
+.spin-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:8px}
+.howto{margin:0 0 16px;padding-left:22px;color:#36536a;font-size:14.5px;display:grid;gap:4px}
 
 @media (max-width:900px){
   .stage-grid{grid-template-columns:1fr;min-height:0;padding-bottom:22px}
@@ -320,7 +330,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
    มาวางใน API_URL_DEFAULT ด้านล่าง แล้วอัปโหลดไฟล์นี้ขึ้น GitHub
    ถ้าเว้นว่าง หน้าเว็บจะทำงานในโหมดทดลอง (ข้อมูลอยู่ในเบราว์เซอร์นี้เท่านั้น)
    ===================================================================== */
-const API_URL_DEFAULT = '';
+const API_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbxzOix9fC_Ju_EGLkJz-agvocuA91ELO2Fh9Pa256dKGDgPKKNsHZBE8o-daL9TquaIpQ/exec';
 
 const DEMO_KEY='hd-equip-demo-v1',URL_KEY='hd-equip-api-url',TH_KEY='hd-equip-thresholds-v1',PW_KEY='hd-equip-pw';
 // เกณฑ์ตั้งต้นอ้างอิง ISO 23500 (แก้ไขได้ในหน้าตั้งค่าให้ตรงกับเกณฑ์ของหน่วย)
@@ -407,9 +417,15 @@ function health(m){ // ใช้กำหนดสีวงแหวนบนแ
   if(f.state==='over'||s==='fail')return 'bad';if(f.state==='soon'||s==='watch')return 'watch';if(!t&&f.state!=='ok')return 'mute';return 'ok';
 }
 function passRate(m){const ts=testsOf(m.id).map(t=>testStatus(t).overall).filter(Boolean);return ts.length?ts.filter(s=>s==='pass').length/ts.length:null;}
+function parseList(v){
+  if(Array.isArray(v))return v.filter(x=>typeof x==='string'&&x);
+  const s=String(v??'').trim();if(!s)return [];
+  if(s[0]==='['){try{const a=JSON.parse(s);return Array.isArray(a)?a.filter(x=>typeof x==='string'&&x):[];}catch{return [];}}
+  return s.split(/[\s,]+/).filter(Boolean);
+}
 function normalize(data){
   const bool=v=>v===true||String(v).toLowerCase()==='true'||v==='1'||v===1;
-  return {machines:(data.machines||[]).map(m=>({...m,hasFilter:bool(m.hasFilter),yearBE:m.yearBE===''||m.yearBE==null?'':Number(m.yearBE)||m.yearBE})),tests:data.tests||[],filters:data.filters||[]};
+  return {machines:(data.machines||[]).map(m=>({...m,hasFilter:bool(m.hasFilter),model3d:parseList(m.model3d),model3dRot:String(m.model3dRot||''),thumb:String(m.thumb||''),yearBE:m.yearBE===''||m.yearBE==null?'':Number(m.yearBE)||m.yearBE})),tests:data.tests||[],filters:data.filters||[]};
 }
 
 /* ---------- ไฟล์แนบ ---------- */
@@ -431,6 +447,47 @@ async function prepFile(file){
 }
 const forServer=f=>f?{name:f.name,mime:f.mime,data:f.data}:null;
 
+/* ---------- เก็บไฟล์ใหญ่ในเบราว์เซอร์ (โมเดลโหมดทดลอง และแคชโมเดลที่โหลดแล้ว) ---------- */
+let idbP=null;
+function idb(){if(!idbP)idbP=new Promise((res,rej)=>{const r=indexedDB.open('hd-equip-files',1);r.onupgradeneeded=()=>r.result.createObjectStore('f');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});return idbP;}
+async function idbGet(k){try{const d=await idb();return await new Promise((res,rej)=>{const q=d.transaction('f').objectStore('f').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error);});}catch{return undefined;}}
+async function idbPut(k,v){const d=await idb();return new Promise((res,rej)=>{const t=d.transaction('f','readwrite');t.objectStore('f').put(v,k);t.oncomplete=()=>res();t.onerror=()=>rej(t.error||new Error('บันทึกในเบราว์เซอร์ไม่สำเร็จ'));t.onabort=()=>rej(t.error||new Error('พื้นที่ในเบราว์เซอร์ไม่พอ'));});}
+async function idbDel(k){try{const d=await idb();await new Promise(res=>{const t=d.transaction('f','readwrite');t.objectStore('f').delete(k);t.oncomplete=res;t.onerror=res;});}catch{}}
+
+/* ---------- โมเดล 3 มิติจากการสแกน (.glb) ---------- */
+const MODEL_PART=4*1024*1024,MODEL_MAX=40*1024*1024;
+function b64FromBuf(buf){const u8=new Uint8Array(buf);let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));return btoa(s);}
+function bufFromB64(b64){const s=atob(b64),u8=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u8[i]=s.charCodeAt(i);return u8.buffer;}
+async function uploadModel(buf,prefix,onProg){
+  if(isDemo()){const key='demo-model:'+uid('G');await idbPut(key,buf);return ['idb:'+key];}
+  const n=Math.ceil(buf.byteLength/MODEL_PART),ids=[];
+  for(let i=0;i<n;i++){
+    onProg&&onProg(i,n);const part=buf.slice(i*MODEL_PART,(i+1)*MODEL_PART);
+    const res=await apiPost('uploadFile',{file:{name:prefix+'_ส่วน'+(i+1)+'จาก'+n+'.bin',mime:'application/octet-stream',data:b64FromBuf(part)}});
+    if(!res.id)throw new Error('อัปโหลดโมเดลไม่สำเร็จ');ids.push(res.id);idbPut('drive:'+res.id,part).catch(()=>{});
+  }
+  onProg&&onProg(n,n);return ids;
+}
+async function loadModelBuffer(refs,onProg){
+  const parts=[];
+  for(const r of refs){
+    let b;
+    if(r.startsWith('idb:'))b=await idbGet(r.slice(4));
+    else{
+      b=await idbGet('drive:'+r);
+      if(!b){
+        if(isDemo())throw new Error('โมเดลนี้เก็บใน Google Drive ต้องเชื่อม Apps Script ก่อน');
+        const res=await fetch(apiUrl+(apiUrl.includes('?')?'&':'?')+'action=file&id='+encodeURIComponent(r),{redirect:'follow'});
+        b=bufFromB64((await parseRes(res)).data);idbPut('drive:'+r,b).catch(()=>{});
+      }
+    }
+    if(!b)throw new Error('ไม่พบไฟล์โมเดลในเบราว์เซอร์นี้ โหมดทดลองเก็บโมเดลไว้เฉพาะเบราว์เซอร์ที่อัปโหลด');
+    parts.push(b);onProg&&onProg(parts.length,refs.length);
+  }
+  if(parts.length===1)return parts[0];
+  const out=new Uint8Array(parts.reduce((a,p)=>a+p.byteLength,0));let o=0;parts.forEach(p=>{out.set(new Uint8Array(p),o);o+=p.byteLength;});return out.buffer;
+}
+
 /* ---------- ติดต่อ Apps Script ---------- */
 async function parseRes(r){const t=await r.text();let j;try{j=JSON.parse(t);}catch{throw new Error('Apps Script ตอบกลับไม่ใช่ข้อมูล JSON ตรวจว่า Deploy เป็น Web App และให้ทุกคนเข้าถึงได้ ('+t.slice(0,80)+')');}if(j&&j.error)throw new Error(j.error);return j;}
 async function apiLoad(){
@@ -440,19 +497,26 @@ async function apiLoad(){
 async function apiPost(action,payload){
   if(isDemo())return demoPost(action,payload);
   const body={action,...payload};['photoFile','file','stickerFile'].forEach(k=>{if(body[k])body[k]=forServer(body[k]);});
+  if(body.machine){const mm={...body.machine};Object.keys(mm).forEach(k=>{if(Array.isArray(mm[k]))mm[k]=JSON.stringify(mm[k]);});body.machine=mm;}
   const r=await fetch(apiUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body),redirect:'follow'});return parseRes(r);
 }
 
 /* ---------- โหมดทดลอง ---------- */
 function demoSave(){try{localStorage.setItem(DEMO_KEY,JSON.stringify(db));}catch(e){throw new Error('พื้นที่เก็บในเบราว์เซอร์เต็ม ลองใช้รูปขนาดเล็กลง หรือเชื่อม Apps Script');}}
-function demoLoad(){try{const raw=localStorage.getItem(DEMO_KEY);if(raw)return normalize(JSON.parse(raw));}catch{}const seed=demoSeed();localStorage.setItem(DEMO_KEY,JSON.stringify(seed));return seed;}
+function demoLoad(){try{const raw=localStorage.getItem(DEMO_KEY);if(raw)return normalize(JSON.parse(raw));}catch{}const seed=normalize(demoSeed());try{localStorage.setItem(DEMO_KEY,JSON.stringify(seed));}catch{}return seed;}
 function demoPost(action,p){
+  const before=JSON.stringify(db);
+  try{return demoPostInner(action,p);}catch(e){db=normalize(JSON.parse(before));throw e;}
+}
+function demoPostInner(action,p){
   const need=()=>{if(String(p.password)!=='1234')throw new Error('รหัสผ่านไม่ถูกต้อง');};
   const up=(list,obj)=>{const i=list.findIndex(x=>x.id===obj.id);if(i>=0)list[i]=obj;else list.push(obj);};
-  if(action==='saveMachine'){const m={...p.machine};if(db.machines.some(x=>x.id===m.id))need();if(p.photoFile)m.photo=p.photoFile.dataUrl;up(db.machines,m);demoSave();return {ok:true,machine:m};}
+  if(action==='saveMachine'){const m={...p.machine},old=db.machines.find(x=>x.id===m.id);if(old)need();if(p.photoFile)m.photo=p.photoFile.dataUrl;up(db.machines,m);demoSave();
+    if(old)(old.model3d||[]).filter(r=>r.startsWith('idb:')&&!(m.model3d||[]).includes(r)).forEach(r=>idbDel(r.slice(4)));return {ok:true,machine:m};}
   if(action==='saveTest'){const t={...p.test};if(db.tests.some(x=>x.id===t.id))need();if(p.file){t.file=p.file.dataUrl;t.fileName=p.file.name;t.fileType=p.file.mime;}up(db.tests,t);demoSave();return {ok:true,test:t};}
   if(action==='saveFilter'){const f={...p.filter};if(db.filters.some(x=>x.id===f.id))need();if(p.stickerFile)f.sticker=p.stickerFile.dataUrl;up(db.filters,f);demoSave();return {ok:true,filter:f};}
-  if(action==='deleteMachine'){need();db.machines=db.machines.filter(x=>x.id!==p.id);db.tests=db.tests.filter(x=>x.machineId!==p.id);db.filters=db.filters.filter(x=>x.machineId!==p.id);demoSave();return {ok:true};}
+  if(action==='checkPassword'){need();return {ok:true};}
+  if(action==='deleteMachine'){need();const gone=db.machines.find(x=>x.id===p.id);if(gone)(gone.model3d||[]).filter(r=>r.startsWith('idb:')).forEach(r=>idbDel(r.slice(4)));db.machines=db.machines.filter(x=>x.id!==p.id);db.tests=db.tests.filter(x=>x.machineId!==p.id);db.filters=db.filters.filter(x=>x.machineId!==p.id);demoSave();return {ok:true};}
   if(action==='deleteTest'){need();db.tests=db.tests.filter(x=>x.id!==p.id);demoSave();return {ok:true};}
   if(action==='deleteFilter'){need();db.filters=db.filters.filter(x=>x.id!==p.id);demoSave();return {ok:true};}
   throw new Error('ไม่รู้จักคำสั่ง '+action);
@@ -477,6 +541,162 @@ function demoSeed(){
     {id:'F21',machineId:'M2',date:addDays(today,-41),due:addDays(today,49),lot:'BF-2407',sticker:'',by:'พยาบาล',note:''}
   ];
   return {machines,tests,filters};
+}
+
+/* =====================================================================
+   ตัวอ่านไฟล์ .glb (glTF 2.0 แบบไฟล์เดียว) สำหรับโมเดลที่สแกนจากเครื่องจริง
+   รองรับ: ตาข่าย สี/ลายพื้นผิว ลำดับชั้นของวัตถุ และสีที่จุดยอด
+   ไม่รองรับ: การบีบอัด Draco / Meshopt / KTX2 (ให้ส่งออกใหม่โดยปิดการบีบอัด)
+   ===================================================================== */
+const GLB_OK_EXT=['KHR_materials_unlit','KHR_texture_transform','KHR_mesh_quantization','KHR_materials_emissive_strength'];
+const GLB_COMP={5120:Int8Array,5121:Uint8Array,5122:Int16Array,5123:Uint16Array,5125:Uint32Array,5126:Float32Array};
+const GLB_GET={5120:'getInt8',5121:'getUint8',5122:'getInt16',5123:'getUint16',5125:'getUint32',5126:'getFloat32'};
+const GLB_NUM={SCALAR:1,VEC2:2,VEC3:3,VEC4:4,MAT2:4,MAT3:9,MAT4:16};
+const GLB_WRAP={33071:THREE.ClampToEdgeWrapping,33648:THREE.MirroredRepeatWrapping,10497:THREE.RepeatWrapping};
+const GLB_MAX_TEX=4096;
+
+async function parseGLB(buf){
+  if(!(buf instanceof ArrayBuffer)||buf.byteLength<20)throw new Error('ไฟล์ว่างหรือไม่สมบูรณ์');
+  const dv=new DataView(buf);
+  if(dv.getUint32(0,true)!==0x46546C67)throw new Error('ไฟล์นี้ไม่ใช่ .glb ให้ส่งออกจากแอปสแกนเป็นชนิด GLB');
+  if(dv.getUint32(4,true)!==2)throw new Error('รองรับเฉพาะ glTF 2.0');
+  let off=12,json=null,bin=null;
+  while(off+8<=dv.byteLength){
+    const len=dv.getUint32(off,true),type=dv.getUint32(off+4,true),start=off+8;
+    if(start+len>dv.byteLength)throw new Error('ไฟล์ .glb ไม่สมบูรณ์ อาจอัปโหลดหรือดาวน์โหลดไม่ครบ');
+    if(type===0x4E4F534A)json=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,start,len)));
+    else if(type===0x004E4942&&!bin)bin=buf.slice(start,start+len);
+    off=start+len+((4-len%4)%4);
+  }
+  if(!json)throw new Error('ไม่พบข้อมูลโมเดลในไฟล์');
+  const bad=(json.extensionsRequired||[]).filter(e=>!GLB_OK_EXT.includes(e));
+  if(bad.length)throw new Error('ไฟล์นี้ถูกบีบอัดแบบที่ยังไม่รองรับ ('+bad.join(', ')+') ให้ส่งออกใหม่โดยปิดการบีบอัด (Draco / Meshopt)');
+  const buffers=await Promise.all((json.buffers||[]).map(async(b,i)=>{
+    if(b.uri&&b.uri.startsWith('data:'))return (await fetch(b.uri)).arrayBuffer();
+    if(b.uri)throw new Error('ไฟล์อ้างถึงไฟล์ภายนอก ('+b.uri+') ให้ส่งออกเป็น GLB ไฟล์เดียว');
+    if(i===0&&bin)return bin;throw new Error('ไม่พบข้อมูลไบนารีของโมเดล');
+  }));
+
+  const accCache=new Map();
+  function accessor(i){
+    if(accCache.has(i))return accCache.get(i);
+    const a=json.accessors[i],T=GLB_COMP[a.componentType],n=GLB_NUM[a.type];
+    if(!T||!n)throw new Error('ชนิดข้อมูลในไฟล์ไม่ถูกต้อง');
+    if(a.sparse)throw new Error('ไฟล์ใช้ข้อมูลแบบ sparse ที่ยังไม่รองรับ');
+    let arr;
+    if(a.bufferView===undefined)arr=new T(a.count*n);
+    else{
+      const bv=json.bufferViews[a.bufferView],buffer=buffers[bv.buffer||0],base=(bv.byteOffset||0)+(a.byteOffset||0),el=T.BYTES_PER_ELEMENT*n,stride=bv.byteStride||el;
+      if(stride===el)arr=new T(buffer.slice(base,base+a.count*el));
+      else{arr=new T(a.count*n);const src=new DataView(buffer),get=GLB_GET[a.componentType];for(let k=0;k<a.count;k++)for(let j=0;j<n;j++)arr[k*n+j]=src[get](base+k*stride+j*T.BYTES_PER_ELEMENT,true);}
+    }
+    const out={arr,n,normalized:!!a.normalized};accCache.set(i,out);return out;
+  }
+  const texCache=new Map();
+  async function bitmap(imgIndex){
+    const im=json.images[imgIndex];let blob;
+    if(im.bufferView!==undefined){const bv=json.bufferViews[im.bufferView];blob=new Blob([new Uint8Array(buffers[bv.buffer||0],bv.byteOffset||0,bv.byteLength)],{type:im.mimeType||'image/jpeg'});}
+    else if(im.uri&&im.uri.startsWith('data:'))blob=await (await fetch(im.uri)).blob();
+    else throw new Error('ไฟล์อ้างถึงภาพภายนอก ให้ส่งออกเป็น GLB ไฟล์เดียว');
+    if(/ktx2|basis/i.test(blob.type))throw new Error('ลายพื้นผิวแบบ KTX2 ยังไม่รองรับ ให้ส่งออกลายพื้นผิวเป็น JPG หรือ PNG');
+    let img=await createImageBitmap(blob,{imageOrientation:'none',premultiplyAlpha:'none',colorSpaceConversion:'none'});
+    if(Math.max(img.width,img.height)>GLB_MAX_TEX){const k=GLB_MAX_TEX/Math.max(img.width,img.height),c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);img.close&&img.close();img=c;}
+    return img;
+  }
+  async function texture(info,srgb){
+    if(!info||json.textures==null)return null;const td=json.textures[info.index];if(!td||td.source===undefined)return null;
+    const key=info.index+'|'+srgb;let tex=texCache.get(key);
+    if(!tex){
+      const img=await bitmap(td.source);tex=new THREE.Texture(img);tex.flipY=false;tex.colorSpace=srgb?THREE.SRGBColorSpace:THREE.NoColorSpace;
+      const s=td.sampler!==undefined&&json.samplers?json.samplers[td.sampler]:{};tex.wrapS=GLB_WRAP[s.wrapS]||THREE.RepeatWrapping;tex.wrapT=GLB_WRAP[s.wrapT]||THREE.RepeatWrapping;
+      if(s.magFilter===9728)tex.magFilter=THREE.NearestFilter;tex.anisotropy=4;tex.needsUpdate=true;texCache.set(key,tex);
+    }
+    const tt=info.extensions&&info.extensions.KHR_texture_transform;
+    if(tt){tex=tex.clone();tex.needsUpdate=true;if(tt.offset)tex.offset.fromArray(tt.offset);if(tt.scale)tex.repeat.fromArray(tt.scale);if(tt.rotation)tex.rotation=tt.rotation;}
+    const ch=(tt&&tt.texCoord!==undefined)?tt.texCoord:info.texCoord||0;if(ch){tex=tex===texCache.get(key)?tex.clone():tex;tex.channel=ch;tex.needsUpdate=true;}
+    return tex;
+  }
+  const matCache=new Map();
+  async function material(i){
+    if(matCache.has(i))return matCache.get(i);
+    let mat;
+    if(i===undefined)mat=new THREE.MeshStandardMaterial({color:0xd9dee2,roughness:.75,metalness:0});
+    else{
+      const md=json.materials[i],pbr=md.pbrMetallicRoughness||{},ext=md.extensions||{},f=pbr.baseColorFactor||[1,1,1,1];
+      const p={side:md.doubleSided?THREE.DoubleSide:THREE.FrontSide,opacity:f[3],transparent:md.alphaMode==='BLEND'};
+      if(md.alphaMode==='MASK')p.alphaTest=md.alphaCutoff??.5;
+      mat=ext.KHR_materials_unlit?new THREE.MeshBasicMaterial(p):new THREE.MeshStandardMaterial(p);
+      mat.color.setRGB(f[0],f[1],f[2],THREE.LinearSRGBColorSpace);
+      mat.map=await texture(pbr.baseColorTexture,true);
+      if(!ext.KHR_materials_unlit){
+        const mr=await texture(pbr.metallicRoughnessTexture,false);
+        // ไม่มีแผนที่สภาพแวดล้อมบนเวที ผิวโลหะล้วนจะดูดำ จึงจำกัดความเป็นโลหะเมื่อไม่มีแผนที่กำกับ
+        mat.metalness=mr?(pbr.metallicFactor??1):Math.min(pbr.metallicFactor??1,.15);
+        mat.roughness=pbr.roughnessFactor??1;if(mr){mat.metalnessMap=mr;mat.roughnessMap=mr;}
+        if(md.normalTexture){mat.normalMap=await texture(md.normalTexture,false);const sc=md.normalTexture.scale??1;mat.normalScale.set(sc,-sc);}
+        if(md.occlusionTexture){mat.aoMap=await texture(md.occlusionTexture,false);mat.aoMapIntensity=md.occlusionTexture.strength??1;}
+        if(md.emissiveFactor)mat.emissive.setRGB(...md.emissiveFactor,THREE.LinearSRGBColorSpace);
+        if(md.emissiveTexture)mat.emissiveMap=await texture(md.emissiveTexture,true);
+        if(ext.KHR_materials_emissive_strength)mat.emissiveIntensity=ext.KHR_materials_emissive_strength.emissiveStrength??1;
+      }
+    }
+    matCache.set(i,mat);return mat;
+  }
+  let tris=0;
+  const meshCache=new Map();
+  async function meshParts(mi){
+    if(meshCache.has(mi))return meshCache.get(mi);
+    const parts=[];
+    for(const pr of json.meshes[mi].primitives){
+      if(pr.extensions&&(pr.extensions.KHR_draco_mesh_compression||pr.extensions.EXT_meshopt_compression))throw new Error('ไฟล์นี้บีบอัดแบบ Draco ให้ส่งออกใหม่โดยปิดการบีบอัด');
+      const mode=pr.mode??4;if(mode!==4&&mode!==5&&mode!==6)continue;
+      if(pr.attributes.POSITION===undefined)continue;
+      const g=new THREE.BufferGeometry(),names={POSITION:'position',NORMAL:'normal',TEXCOORD_0:'uv',TEXCOORD_1:'uv1',COLOR_0:'color'};
+      for(const [k,name] of Object.entries(names)){if(pr.attributes[k]===undefined)continue;const a=accessor(pr.attributes[k]);g.setAttribute(name,new THREE.BufferAttribute(a.arr,a.n,a.normalized));}
+      let index=pr.indices!==undefined?accessor(pr.indices).arr:null;
+      if(index&&index instanceof Uint8Array)index=Uint16Array.from(index);
+      if(mode!==4){const n=index?index.length:g.attributes.position.count,src=index||Array.from({length:n},(_,k)=>k),out=[];
+        if(mode===5)for(let k=0;k+2<n;k++)k%2?out.push(src[k+1],src[k],src[k+2]):out.push(src[k],src[k+1],src[k+2]);
+        else for(let k=1;k+1<n;k++)out.push(src[0],src[k],src[k+1]);
+        index=g.attributes.position.count>65535?Uint32Array.from(out):Uint16Array.from(out);}
+      if(index)g.setIndex(new THREE.BufferAttribute(index,1));
+      if(!g.attributes.normal)g.computeVertexNormals();
+      tris+=(index?index.length:g.attributes.position.count)/3;
+      let mat=await material(pr.material);
+      if(g.attributes.color){mat=mat.clone();mat.vertexColors=true;}
+      parts.push({g,mat});
+    }
+    meshCache.set(mi,parts);return parts;
+  }
+  async function node(i,depth=0){
+    if(depth>64)throw new Error('โครงสร้างไฟล์ซ้อนกันลึกเกินไป');
+    const nd=json.nodes[i],o=new THREE.Group();
+    if(nd.matrix){o.matrix.fromArray(nd.matrix);o.matrix.decompose(o.position,o.quaternion,o.scale);}
+    else{if(nd.translation)o.position.fromArray(nd.translation);if(nd.rotation)o.quaternion.fromArray(nd.rotation);if(nd.scale)o.scale.fromArray(nd.scale);}
+    if(nd.mesh!==undefined)for(const {g,mat} of await meshParts(nd.mesh)){const m=new THREE.Mesh(g,mat);m.castShadow=true;m.receiveShadow=true;o.add(m);}
+    for(const c of nd.children||[])o.add(await node(c,depth+1));
+    return o;
+  }
+  const root=new THREE.Group();
+  let roots;
+  if(json.scenes&&json.scenes.length)roots=json.scenes[json.scene||0].nodes||[];
+  else{const kids=new Set();(json.nodes||[]).forEach(n=>(n.children||[]).forEach(c=>kids.add(c)));roots=(json.nodes||[]).map((_,i)=>i).filter(i=>!kids.has(i));}
+  for(const r of roots)root.add(await node(r));
+  if(!tris)throw new Error('ไม่พบพื้นผิวรูปทรงในไฟล์');
+  root.userData.tris=Math.round(tris);root.userData.textured=texCache.size>0;
+  return root;
+}
+
+/** จัดโมเดลให้ตั้งตรง หันหน้าตามที่ตั้งไว้ วางกลางแท่น และปรับขนาดให้พอดีเวที */
+function placeScanned(root,rot){
+  const [rx,ry]=String(rot||'0,0').split(',').map(v=>Number(v)||0);
+  const tilt=new THREE.Group(),turn=new THREE.Group(),out=new THREE.Group();
+  tilt.rotation.x=rx*Math.PI/180;tilt.add(root);turn.rotation.y=ry*Math.PI/180;turn.add(tilt);out.add(turn);
+  out.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(turn),size=box.getSize(new THREE.Vector3());
+  const s=Math.min(1.6/Math.max(size.y,1e-6),1.75/Math.max(size.x,size.z,1e-6));
+  turn.scale.setScalar(s);out.updateMatrixWorld(true);
+  const b2=new THREE.Box3().setFromObject(turn),c=b2.getCenter(new THREE.Vector3());turn.position.set(-c.x,-b2.min.y,-c.z);
+  out.userData.scanned=true;return out;
 }
 
 /* =====================================================================
@@ -594,7 +814,7 @@ function initStage(){
       if(r.width!==three.w||r.height!==three.h){three.w=r.width;three.h=r.height;renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();if(three.model){const f=frameCamera(camera,three.model,camera.aspect,2.45);three.wantDist=f.dist;three.wantTarget.copy(f.target);}}
       if(!three.drag&&!reduceMotion&&now-three.lastTouch>2500)three.angle+=dt*.42;
       three.pivot.rotation.y=three.angle;
-      three.leaving=three.leaving.filter(o=>{o.t+=dt/.32;const k=Math.min(1,o.t);o.obj.position.y=-k*.5;o.obj.scale.setScalar(1-.25*k);if(k>=1){three.holder.remove(o.obj);disposeObj(o.obj);return false;}return true;});
+      three.leaving=three.leaving.filter(o=>{o.t+=dt/.32;const k=Math.min(1,o.t);o.obj.position.y=-k*.5;o.obj.scale.setScalar(1-.25*k);if(k>=1){three.holder.remove(o.obj);if(!o.obj.userData.shared)disposeObj(o.obj);return false;}return true;});
       if(three.model&&three.model.userData.t<1){const u=three.model.userData;u.t=Math.min(1,u.t+dt/.55);const e=1-Math.pow(1-u.t,3);three.model.position.y=(1-e)*-.35;three.model.scale.setScalar(.82+.18*e);}
       three.camDist+=(three.wantDist-three.camDist)*.08;three.camTarget.lerp(three.wantTarget,.08);
       const el=.2;camera.position.set(0,three.camTarget.y+Math.sin(el)*three.camDist*.9+.25,Math.cos(el)*three.camDist);camera.lookAt(three.camTarget);
@@ -605,12 +825,66 @@ function initStage(){
   }catch(e){console.warn('WebGL ใช้ไม่ได้',e);three=null;return false;}
 }
 function mountStage(container){if(!three)return false;container.appendChild(three.renderer.domElement);three.mount=container;three.w=0;return true;}
+/* ---------- เลือกระหว่างโมเดลสแกนจากเครื่องจริงกับโมเดลจำลอง ---------- */
+const modelCache=new Map();
+const modelRef=m=>(m.model3d&&m.model3d.length)?m.model3d.join('|'):'';
+function setModelStatus(text,isErr){
+  const v=three&&three.mount;if(!v)return;let el=v.querySelector('.model-status');
+  if(!text){if(el)el.remove();return;}
+  if(!el){el=document.createElement('div');el.className='model-status';el.setAttribute('role','status');v.appendChild(el);}
+  el.textContent=text;el.classList.toggle('err',!!isErr);
+}
+function getScanned(m,onProg){
+  const ref=modelRef(m);
+  if(!modelCache.has(ref)){
+    const p=loadModelBuffer(m.model3d,onProg).then(parseGLB);p.catch(()=>modelCache.delete(ref));modelCache.set(ref,p);
+    while(modelCache.size>4)modelCache.delete(modelCache.keys().next().value);
+  }
+  return modelCache.get(ref);
+}
+function swapModel(model){
+  if(three.model)three.leaving.push({obj:three.model,t:0});
+  model.userData.t=reduceMotion?1:0;three.holder.add(model);three.model=model;
+  const f=frameCamera(three.camera,model,three.camera.aspect||1.4,2.45);three.wantDist=f.dist;three.wantTarget.copy(f.target);if(!three.camDist||reduceMotion){three.camDist=f.dist;three.camTarget.copy(f.target);}
+}
 function showOnStage(m){
   if(!three||!m)return;three.ringMat.emissive.set(RING[health(m)]||RING.ok);
-  const key=m.id+'|'+m.type+'|'+m.color;if(three.currentId===key)return;three.currentId=key;
-  if(three.model)three.leaving.push({obj:three.model,t:0});
-  const model=buildModel(m);model.userData.t=reduceMotion?1:0;three.holder.add(model);three.model=model;
-  const f=frameCamera(three.camera,model,three.camera.aspect||1.4,2.45);three.wantDist=f.dist;three.wantTarget.copy(f.target);if(!three.camDist||reduceMotion){three.camDist=f.dist;three.camTarget.copy(f.target);}
+  const ref=modelRef(m),key=m.id+'|'+(ref?ref+'|'+m.model3dRot:m.type+'|'+m.color);
+  if(three.currentId===key)return;three.currentId=key;setModelStatus('');
+  if(!ref){swapModel(buildModel(m));return;}
+  if(three.model){three.leaving.push({obj:three.model,t:0});three.model=null;}
+  let pending=true;setTimeout(()=>{if(pending&&three.currentId===key)setModelStatus('กำลังโหลดโมเดล 3 มิติ…');},120);
+  getScanned(m,(d,n)=>{if(pending&&n>1&&three.currentId===key)setModelStatus('กำลังโหลดโมเดล 3 มิติ '+Math.round(d/n*100)+'%');})
+    .then(root=>{pending=false;if(three.currentId!==key)return;setModelStatus('');const obj=placeScanned(root.clone(),m.model3dRot);obj.userData.shared=true;swapModel(obj);})
+    .catch(e=>{pending=false;if(three.currentId!==key)return;setModelStatus('โหลดโมเดลสแกนไม่สำเร็จ แสดงภาพจำลองแทน · '+e.message,true);swapModel(buildModel(m));});
+}
+
+/* ---------- หน้าต่างดูตัวอย่างโมเดลก่อนบันทึก ---------- */
+function makePreview(box){
+  const r=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});r.setPixelRatio(Math.min(devicePixelRatio||1,2));r.outputColorSpace=THREE.SRGBColorSpace;r.toneMapping=THREE.ACESFilmicToneMapping;r.toneMappingExposure=1.05;r.shadowMap.enabled=true;
+  const s=new THREE.Scene();addLights(s);const cam=new THREE.PerspectiveCamera(30,1,.1,60),pivot=new THREE.Group();s.add(pivot);
+  add(pivot,cylG(1.0,1.06,.06,64),M('#24485b',.55,.3),0,.03,0);
+  box.innerHTML='';box.appendChild(r.domElement);r.domElement.className='preview-canvas';
+  let obj=null,alive=true,angle=.6,last=performance.now(),drag=null,lastTouch=0;
+  const cv=r.domElement;
+  cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,a:angle};cv.setPointerCapture(e.pointerId);lastTouch=performance.now();});
+  cv.addEventListener('pointermove',e=>{if(drag){angle=drag.a+(e.clientX-drag.x)*.011;lastTouch=performance.now();}});
+  const end=()=>{drag=null;lastTouch=performance.now();};cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+  const frame=(w,h)=>{cam.aspect=w/h;cam.updateProjectionMatrix();if(!obj)return;const f=frameCamera(cam,obj,cam.aspect,2.2);cam.position.set(0,f.target.y+Math.sin(.2)*f.dist*.9+.25,Math.cos(.2)*f.dist);cam.lookAt(f.target);};
+  const loop=now=>{if(!alive)return;if(!box.isConnected){api.dispose();return;}requestAnimationFrame(loop);const dt=Math.min(.05,(now-last)/1000);last=now;
+    const w=box.clientWidth,h=box.clientHeight;if(w<2||h<2)return;if(cv.width!==Math.round(w*r.getPixelRatio())||cv.height!==Math.round(h*r.getPixelRatio()))r.setSize(w,h,false);
+    if(!drag&&!reduceMotion&&now-lastTouch>2000)angle+=dt*.5;pivot.rotation.y=angle;frame(w,h);r.render(s,cam);};
+  requestAnimationFrame(loop);
+  const api={
+    set(o){if(obj)pivot.remove(obj);obj=o;if(o){o.position.y=.06;pivot.add(o);}},
+    thumb(){
+      const W=480,H=360,pr=r.getPixelRatio(),a0=angle;r.setPixelRatio(1);r.setSize(W,H,false);pivot.rotation.y=.6;frame(W,H);r.render(s,cam);
+      const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d'),gr=g.createRadialGradient(W/2,H*.45,0,W/2,H*.45,W*.62);gr.addColorStop(0,'#2a6380');gr.addColorStop(.75,'#123447');gr.addColorStop(1,'#123447');g.fillStyle=gr;g.fillRect(0,0,W,H);g.drawImage(cv,0,0,W,H);
+      r.setPixelRatio(pr);r.setSize(box.clientWidth||W,box.clientHeight||H,false);angle=a0;return c.toDataURL('image/jpeg',.86);
+    },
+    dispose(){if(!alive)return;alive=false;try{r.dispose();r.forceContextLoss();}catch{}}
+  };
+  return api;
 }
 /* ---------- ภาพนิ่งจากโมเดลสำหรับการ์ด ---------- */
 function snapshot(m){
@@ -628,7 +902,11 @@ function snapshot(m){
 let filterType='all',query='',stageIdx=0,homeScroll=0,hasGL=false;
 const STATUS_CHIP={'พร้อมใช้งาน':'ok','สำรอง':'info','ส่งซ่อม':'watch','จำหน่ายแล้ว':'mute'};
 const placeholderSvg=t=>'data:image/svg+xml,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180"><rect width="240" height="180" fill="#173f55"/><rect x="${t==='ro'?70:90}" y="${t==='ro'?70:40}" width="${t==='ro'?100:60}" height="${t==='ro'?70:100}" rx="10" fill="#e8f1f5"/><rect x="${t==='ro'?82:98}" y="${t==='ro'?80:50}" width="${t==='ro'?34:44}" height="22" rx="3" fill="#19B5A5"/><circle cx="${t==='ro'?82:102}" cy="148" r="7" fill="#e8f1f5"/><circle cx="${t==='ro'?158:138}" cy="148" r="7" fill="#e8f1f5"/></svg>`);
-function cardImage(m){const snap=hasGL?snapshot(m):'',fb=snap||placeholderSvg(typeOf(m));return m.photo?{src:fileUrl(m.photo,'img'),photo:true,fb}:{src:fb,photo:false,fb};}
+function cardImage(m){const snap=hasGL?snapshot(m):'',fb=snap||placeholderSvg(typeOf(m)),scan=(m.model3d||[]).length>0;
+  if(m.photo)return {src:fileUrl(m.photo,'img'),photo:true,fb,scan};
+  if(scan&&m.thumb)return {src:fileUrl(m.thumb,'img'),photo:true,fb,scan};
+  return {src:fb,photo:false,fb,scan};}
+const mb=n=>{n=Number(n)||0;return n<1048576?Math.max(1,Math.round(n/1024))+' KB':(n/1048576).toFixed(1)+' MB';};
 function sortMachines(list){return list.slice().sort((a,b)=>(typeOf(a)===typeOf(b)?0:typeOf(a)==='hd'?-1:1)||String(a.name).localeCompare(String(b.name),'th',{numeric:true}));}
 function visible(){const q=query.trim().toLowerCase();return sortMachines(db.machines).filter(m=>(filterType==='all'||typeOf(m)===filterType)&&(!q||[m.name,m.code,m.serial,m.brand,m.model,m.location].join(' ').toLowerCase().includes(q)));}
 function age(m){return m.yearBE?Math.max(0,currentBE()-Number(m.yearBE)):null;}
@@ -666,7 +944,7 @@ function renderStageInfo(){
 function renderCatalog(){
   const list=visible(),box=$('#catalog');if(!box)return;
   if(!list.length){box.innerHTML=`<div class="empty">${db.machines.length?'ไม่พบเครื่องที่ตรงกับการค้นหา':'ยังไม่มีเครื่อง กด “เพิ่มเครื่อง” ด้านบนเพื่อเริ่มต้น'}</div>`;return;}
-  box.innerHTML=list.map((m,i)=>{const im=cardImage(m);return `<button class="slot${i===stageIdx?' current':''}" data-id="${esc(m.id)}" aria-label="ดูรายละเอียด ${esc(m.name)}"><div class="slot-img"><img src="${esc(im.src)}" data-fallback="${esc(im.fb)}" class="${im.photo?'photo':''}" alt="" loading="lazy">${im.photo?'':'<span class="badge3d">ภาพจำลอง</span>'}</div><div class="slot-body"><div class="slot-top">${m.code?`<span class="plate"><span>${esc(m.code)}</span></span>`:'<span></span>'}<span class="chip plain ${typeOf(m)==='ro'?'info':'ok'}">${TYPES[typeOf(m)].short}</span></div><h3>${esc(m.name)}</h3>${m.brand||m.model?`<p class="meta">${esc([m.brand,m.model].filter(Boolean).join(' '))}</p>`:''}<dl class="facts"><dt>ปีที่ซื้อ</dt><dd>${m.yearBE?'พ.ศ. '+esc(m.yearBE):'—'}</dd><dt>สถานะ</dt><dd>${esc(m.status||'—')}</dd></dl>${m.note?`<p class="note">${esc(m.note)}</p>`:''}<div class="chips">${filterChip(m)}${lastTestChip(m)}</div></div></button>`;}).join('');
+  box.innerHTML=list.map((m,i)=>{const im=cardImage(m);return `<button class="slot${i===stageIdx?' current':''}" data-id="${esc(m.id)}" aria-label="ดูรายละเอียด ${esc(m.name)}"><div class="slot-img"><img src="${esc(im.src)}" data-fallback="${esc(im.fb)}" class="${im.photo?'photo':''}" alt="" loading="lazy">${im.scan?'<span class="badge3d">สแกน 3 มิติ</span>':im.photo?'':'<span class="badge3d">ภาพจำลอง</span>'}</div><div class="slot-body"><div class="slot-top">${m.code?`<span class="plate"><span>${esc(m.code)}</span></span>`:'<span></span>'}<span class="chip plain ${typeOf(m)==='ro'?'info':'ok'}">${TYPES[typeOf(m)].short}</span></div><h3>${esc(m.name)}</h3>${m.brand||m.model?`<p class="meta">${esc([m.brand,m.model].filter(Boolean).join(' '))}</p>`:''}<dl class="facts"><dt>ปีที่ซื้อ</dt><dd>${m.yearBE?'พ.ศ. '+esc(m.yearBE):'—'}</dd><dt>สถานะ</dt><dd>${esc(m.status||'—')}</dd></dl>${m.note?`<p class="note">${esc(m.note)}</p>`:''}<div class="chips">${filterChip(m)}${lastTestChip(m)}</div></div></button>`;}).join('');
   box.querySelectorAll('.slot').forEach(b=>b.onclick=()=>openDetail(b.dataset.id));
 }
 function markCurrent(){document.querySelectorAll('.slot').forEach((b,i)=>b.classList.toggle('current',i===stageIdx));}
@@ -679,15 +957,16 @@ function renderDetail(id){
   document.title=m.name+' · โชว์รูมเครื่องมือไตเทียม';
   const a=age(m),f=filterInfo(m),tests=testsOf(m.id);
   const spec=[['รหัสครุภัณฑ์',m.code],['หมายเลขเครื่อง',m.serial],['ปีที่ซื้อ',m.yearBE?'พ.ศ. '+m.yearBE:''],['อายุการใช้งาน',a===null?'':a+' ปี'],['ที่ตั้ง / ใช้งานที่',m.location],['สถานะ',m.status]];
+  spec.push(['โมเดล 3 มิติ',(m.model3d||[]).length?'สแกนจากเครื่องจริง'+(m.model3dSize?' ('+mb(m.model3dSize)+')':''):'ภาพจำลองทั่วไป']);
   if(typeOf(m)==='hd')spec.push(['Bacteria filter',m.hasFilter?'มี'+(Number(m.filterDays)>0?' (เปลี่ยนทุก '+m.filterDays+' วัน)':''):'ไม่มี']);
-  $('#app').innerHTML=`<div class="page"><div class="detail-head"><button class="back" id="back">‹ กลับแคตตาล็อก</button><div class="panel-actions"><button class="btn small" id="editM">แก้ไขข้อมูลเครื่อง</button><button class="btn small danger" id="delM">ลบเครื่อง</button></div></div>
+  $('#app').innerHTML=`<div class="page"><div class="detail-head"><button class="back" id="back">‹ กลับแคตตาล็อก</button><div class="panel-actions"><button class="btn small" id="scanM">${(m.model3d||[]).length?'เปลี่ยนโมเดลสแกน 3 มิติ':'ใส่โมเดลสแกน 3 มิติ'}</button><button class="btn small" id="editM">แก้ไขข้อมูลเครื่อง</button><button class="btn small danger" id="delM">ลบเครื่อง</button></div></div>
   <div class="detail-hero"><div class="detail-stage"><div class="stage-view" id="detailView"><div class="stage-hint">ลากเพื่อหมุนดูรอบเครื่อง</div></div>${m.photo?`<div class="photo-strip"><button id="photoBtn" aria-label="ดูรูปถ่ายเครื่อง"><img src="${esc(fileUrl(m.photo,'img'))}" alt="รูปถ่ายเครื่อง"></button></div>`:''}</div>
   <div class="info-card"><p class="type">${TYPES[typeOf(m)].label}</p><h2>${esc(m.name)}</h2><p class="meta">${esc([m.brand,m.model].filter(Boolean).join(' ')||'ยังไม่ระบุยี่ห้อและรุ่น')}</p><div class="chips"><span class="chip ${STATUS_CHIP[m.status]||'mute'}">${esc(m.status||'ไม่ระบุสถานะ')}</span>${filterChip(m)}${lastTestChip(m)}</div>
   <dl class="spec">${spec.map(([k,v])=>`<div><dt>${k}</dt><dd>${v?esc(v):'—'}</dd></div>`).join('')}<div class="wide"><dt>หมายเหตุ</dt><dd>${m.note?esc(m.note):'—'}</dd></div></dl></div></div>
   ${typeOf(m)==='hd'?filterPanel(m,f):''}
   ${testsPanel(m,tests)}</div>`;
   const view=$('#detailView');if(mountStage(view)){view.prepend(three.renderer.domElement);showOnStage(m);}else{const im=cardImage(m);view.insertAdjacentHTML('afterbegin',`<div class="stage-fallback"><img src="${esc(im.src)}" alt="${esc(m.name)}"></div>`);}
-  $('#back').onclick=()=>{location.hash='#/';};$('#editM').onclick=()=>openMachineForm(m);$('#delM').onclick=()=>deleteMachine(m);
+  $('#back').onclick=()=>{location.hash='#/';};$('#editM').onclick=()=>openMachineForm(m);$('#scanM').onclick=()=>openScanForm(m);$('#delM').onclick=()=>deleteMachine(m);
   const pb=$('#photoBtn');if(pb)pb.onclick=()=>openViewer(m.photo,'image/jpeg','รูปถ่าย '+m.name);
   bindDetail(m);
 }
@@ -743,6 +1022,7 @@ function openModal(title,body,{submit,submitLabel='บันทึก',cancelLab
 }
 async function runSubmit(){const btn=$('#mOk');const err=$('#modalBody .form-error');if(err)err.textContent='';btn.disabled=true;try{await modalSubmit();}catch(e){if(err)err.textContent=e.message;else toast(e.message);}finally{if(btn.isConnected)btn.disabled=false;}}
 let modalResolve=null;function closeModal(v){if(modal.open)modal.close();if(modalResolve){const r=modalResolve;modalResolve=null;r(v);}}
+const modalCleanup=[];modal.addEventListener('close',()=>{while(modalCleanup.length){try{modalCleanup.pop()();}catch{}}});
 $('#modalClose').onclick=()=>closeModal(null);modal.addEventListener('cancel',e=>{e.preventDefault();closeModal(null);});
 modal.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT'&&e.target.type!=='file'&&modalSubmit){e.preventDefault();runSubmit();}});
 let toastT;function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),3200);}
@@ -796,6 +1076,61 @@ function openMachineForm(m){
   },submitLabel:m?'บันทึกการแก้ไข':'เพิ่มเครื่อง'});
   const sync=()=>{const t=document.querySelector('[name=type]:checked').value,hf=document.querySelector('[name=hasFilter]:checked').value==='1';$('#filterBox').classList.toggle('hidden',t!=='hd');$('#daysField').classList.toggle('hidden',!hf);};
   document.querySelectorAll('[name=type],[name=hasFilter]').forEach(r=>r.onchange=sync);sync();
+}
+
+/* ---------- โมเดล 3 มิติจากการสแกนเครื่องจริง ---------- */
+function openScanForm(m){
+  const has=(m.model3d||[]).length>0;let pack=null,root=null,rx=0,ry=0,preview=null,tok=0;
+  if(has){[rx,ry]=String(m.model3dRot||'0,0').split(',').map(v=>Number(v)||0);}
+  openModal('โมเดล 3 มิติจากการสแกนเครื่องจริง',`<ol class="howto"><li>ติดตั้งแอปสแกน 3 มิติบนมือถือ เช่น Scaniverse หรือ KIRI Engine (มีรุ่นใช้ฟรี)</li><li>เดินถ่ายรอบเครื่องช้า ๆ ตามที่แอปแนะนำ ให้เห็นครบทุกด้าน แล้วรอแอปประมวลผล</li><li>ใช้เครื่องมือครอปในแอปตัดพื้นและสิ่งรอบข้างออก แล้วส่งออกเป็นไฟล์ GLB ขนาดไม่เกิน 40 MB</li><li>เลือกไฟล์ด้านล่าง ตรวจทิศในภาพตัวอย่าง แล้วกดบันทึก</li></ol>
+  <div class="form"><div class="field wide"><label for="gFile">ไฟล์โมเดล (.glb)</label><input id="gFile" type="file" accept=".glb,model/gltf-binary"></div>
+  <div class="field wide"><div class="scan-preview" id="gPreview"><p>${has?'กำลังโหลดโมเดลปัจจุบัน…':'ตัวอย่างโมเดลจะแสดงที่นี่หลังเลือกไฟล์'}</p></div>
+  <div class="spin-tools"><div class="inline-btns"><button type="button" class="btn small" id="gUp" disabled>ตั้งตรง ↻</button><button type="button" class="btn small" id="gFace" disabled>หันหน้า ↻</button></div><span id="gInfo" class="thresholds"></span></div>
+  <p class="thresholds" style="margin-top:6px">ถ้าโมเดลนอนอยู่ กด “ตั้งตรง” จนเครื่องตั้งขึ้น ถ้าด้านหน้าไม่หันมาทางผู้ดู กด “หันหน้า”</p></div></div><p class="form-error"></p>`,
+  {submit:async()=>{
+    if(!pack&&!(has&&root))throw new Error('เลือกไฟล์ .glb ก่อน');
+    const rot=rx+','+ry;
+    if(!pack){if(rot===(m.model3dRot||'0,0')){modal.close();return;}const thumb=preview.thumb();preview.dispose();modal.close();await saveScan(m,{keep:true,rot,thumb});return;}
+    const thumb=preview.thumb();preview.dispose();modal.close();await saveScan(m,{...pack,rot,thumb});
+  },submitLabel:'บันทึกโมเดล'});
+  preview=makePreview($('#gPreview'));modalCleanup.push(()=>preview.dispose());
+  const place=()=>{if(root)preview.set(placeScanned(root.clone(),rx+','+ry));};
+  const ready=r=>{root=r;$('#gUp').disabled=false;$('#gFace').disabled=false;place();};
+  $('#gUp').onclick=()=>{rx=(rx-90+360)%360;place();};$('#gFace').onclick=()=>{ry=(ry+90)%360;place();};
+  if(has){
+    $('#modalFoot').insertAdjacentHTML('afterbegin','<button class="btn danger" id="gRemove" style="margin-right:auto">เลิกใช้โมเดลสแกน</button>');
+    $('#gRemove').onclick=()=>{preview.dispose();modal.close();saveScan(m,null);};
+    $('#gInfo').textContent='ใช้อยู่'+(m.model3dSize?' · '+mb(m.model3dSize):'');
+    getScanned(m).then(r=>{if(!pack&&$('#gPreview'))ready(r);}).catch(e=>{const box=$('#gPreview');if(box)box.insertAdjacentHTML('beforeend',`<p class="preview-msg">โหลดโมเดลปัจจุบันไม่ได้: ${esc(e.message)}</p>`);});
+  }
+  $('#gFile').onchange=async e=>{
+    const file=e.target.files[0],err=$('#modalBody .form-error'),info=$('#gInfo'),ok=$('#mOk');if(!file)return;const my=++tok;
+    err.textContent='';pack=null;root=null;$('#gUp').disabled=true;$('#gFace').disabled=true;ok.disabled=true;rx=0;ry=0;preview.set(null);info.textContent='กำลังอ่านไฟล์…';
+    try{
+      if(!/\.glb$/i.test(file.name))throw new Error('เลือกไฟล์นามสกุล .glb (ส่งออกจากแอปสแกนเป็นชนิด GLB)');
+      if(file.size>MODEL_MAX)throw new Error('ไฟล์ใหญ่ '+mb(file.size)+' เกิน 40 MB ให้ลดความละเอียดในแอปสแกนแล้วส่งออกใหม่');
+      const buf=await file.arrayBuffer(),r=await parseGLB(buf);if(my!==tok)return;
+      pack={buf,name:file.name,size:file.size};ready(r);
+      const t=r.userData.tris;info.textContent=mb(file.size)+' · '+t.toLocaleString('th-TH')+' สามเหลี่ยม'+(r.userData.textured?' · มีลายพื้นผิว':' · ไม่มีลายพื้นผิว');
+      if(t>1500000)err.textContent='โมเดลละเอียดมาก อาจหมุนช้าบนมือถือ แนะนำลดความละเอียดในแอปก่อนส่งออก (บันทึกได้ตามปกติ)';
+    }catch(ex){if(my!==tok)return;pack=null;root=null;info.textContent='';err.textContent=ex.message;}
+    finally{if(my===tok&&ok.isConnected)ok.disabled=false;}
+  };
+}
+async function saveScan(m,pack){
+  try{
+    const res=await withPassword(true,async pw=>{
+      busy(true,'กำลังตรวจรหัสผ่าน…');await apiPost('checkPassword',{password:pw});
+      let fields={model3d:[],model3dRot:'',model3dName:'',model3dSize:'',thumb:''};
+      if(pack&&pack.keep)fields={model3d:m.model3d,model3dRot:pack.rot,model3dName:m.model3dName||'',model3dSize:m.model3dSize||'',thumb:m.thumb||''};
+      else if(pack)fields={model3d:await uploadModel(pack.buf,'โมเดล3D_'+(m.code||m.name),(i,n)=>busy(true,n>1?'กำลังอัปโหลดโมเดล ส่วนที่ '+Math.min(i+1,n)+'/'+n:'กำลังอัปโหลดโมเดล…')),model3dRot:pack.rot,model3dName:pack.name,model3dSize:String(pack.size),thumb:''};
+      if(pack){busy(true,'กำลังบันทึกภาพปก…');fields.thumb=isDemo()?pack.thumb:(await apiPost('uploadFile',{file:{name:'โมเดล3D_'+(m.code||m.name)+'_ภาพปก.jpg',mime:'image/jpeg',data:pack.thumb.split(',')[1]}})).id;}
+      busy(true,'กำลังบันทึก…');return apiPost('saveMachine',{machine:{...m,...fields},password:pw});
+    });
+    busy(false);if(res===null)return;
+    up(db.machines,normalize({machines:[res.machine]}).machines[0]);if(three)three.currentId=null;
+    toast(!pack?'กลับไปใช้ภาพจำลองแล้ว':pack.keep?'บันทึกทิศของโมเดลแล้ว':'บันทึกโมเดล 3 มิติแล้ว');rerender();
+  }catch(e){busy(false);toast('บันทึกไม่สำเร็จ: '+e.message);}
 }
 
 /* ---------- ฟอร์มผลตรวจ ---------- */
