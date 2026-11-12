@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>โชว์รูมเครื่องมือไตเทียม</title>
-<meta name="description" content="แคตตาล็อกเครื่องไตเทียมและระบบน้ำ RO เคลื่อนที่ พร้อมผลเพาะเชื้อ Endotoxin และการเปลี่ยน Bacteria filter">
+<title>เครื่องมือไตเทียม</title>
+<meta name="description" content="เครื่องไตเทียมและระบบน้ำ RO เคลื่อนที่ พร้อมผลเพาะเชื้อ Endotoxin และการเปลี่ยน Bacteria filter">
 <meta name="theme-color" content="#0E2A3B">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -241,6 +241,22 @@ footer{max-width:1280px;margin:0 auto;padding:0 clamp(16px,4vw,40px) 40px;color:
 .spin-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:8px}
 .howto{margin:0 0 16px;padding-left:22px;color:#36536a;font-size:14.5px;display:grid;gap:4px}
 
+/* ป้ายชี้ส่วนประกอบบนโมเดลจำลอง */
+.part-labels{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:1}
+.pin{position:absolute;left:0;top:0;opacity:0;transition:opacity .25s;will-change:transform}
+.pin.on{opacity:1}
+.pin i{position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 3px rgba(25,181,165,.3),0 0 0 4px rgba(14,42,59,.9)}
+.pin::before{content:'';position:absolute;left:-.5px;top:-22px;width:1px;height:16px;background:rgba(150,232,222,.7)}
+.pin span{position:absolute;left:-8px;bottom:21px;white-space:nowrap;font-size:12.5px;font-weight:600;line-height:1.15;color:#eaf8fb;background:rgba(8,30,42,.88);border:1px solid rgba(95,216,201,.5);border-radius:8px;padding:5px 9px}
+.pin.left span{left:auto;right:-8px}
+.pin.down::before{top:6px}
+.pin.down span{bottom:auto;top:21px}
+.label-toggle{position:absolute;right:12px;top:12px;z-index:3;display:inline-flex;align-items:center;gap:9px;border:1px solid rgba(255,255,255,.32);background:rgba(6,24,34,.6);color:#dff3f9;border-radius:999px;padding:7px 13px 7px 9px;font:inherit;font-size:13px;font-weight:500;cursor:pointer}
+.label-toggle::before{content:'';width:30px;height:17px;border-radius:999px;background:#3a5866;transition:background .2s}
+.label-toggle::after{content:'';position:absolute;left:12px;top:50%;width:13px;height:13px;margin-top:-6.5px;border-radius:50%;background:#e8f3f6;transition:transform .2s}
+.label-toggle[aria-pressed="true"]::before{background:var(--teal)}
+.label-toggle[aria-pressed="true"]::after{transform:translateX(13px)}
+
 @media (max-width:900px){
   .stage-grid{grid-template-columns:1fr;min-height:0;padding-bottom:22px}
   .stage-view{height:52vh;min-height:300px}
@@ -269,6 +285,9 @@ footer{max-width:1280px;margin:0 auto;padding:0 clamp(16px,4vw,40px) 40px;color:
   dialog{width:100vw;max-width:100vw;max-height:100dvh;height:100dvh;border-radius:0}
   .modal-body{max-height:none;flex:1}
   dialog[open]{display:flex;flex-direction:column}
+  .detail-stage .stage-hint{display:none}
+  .pin span{font-size:11px;padding:4px 7px}
+  .label-toggle{font-size:12px;padding:6px 11px 6px 8px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
@@ -716,70 +735,318 @@ function rbox(w,h,d,r=.04){
 const cylG=(rt,rb,h,seg=24)=>new THREE.CylinderGeometry(rt,rb,h,seg);
 function tubeAlong(parent,pts,r,mat){const curve=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(...p)));return add(parent,new THREE.TubeGeometry(curve,48,r,8,false),mat);}
 function canvasTex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t;}
-function screenMat(kind,accent){
-  const tex=canvasTex(256,160,(g,w,h)=>{g.fillStyle='#062a33';g.fillRect(0,0,w,h);g.fillStyle=accent;g.fillRect(0,0,w,22);g.fillStyle='#062a33';g.font='bold 14px sans-serif';g.fillText(kind==='hd'?'HD  04:00':'RO  READY',10,16);
-    g.strokeStyle='#33e3cf';g.lineWidth=3;g.beginPath();for(let x=0;x<w;x+=4){const y=92+Math.sin(x/14)*12*(kind==='hd'?1:.4);x?g.lineTo(x,y):g.moveTo(x,y);}g.stroke();
-    g.fillStyle='#9ff6ea';g.font='bold 30px sans-serif';g.fillText(kind==='hd'?'250':'12',12,145);g.font='13px sans-serif';g.fillText(kind==='hd'?'mL/min':'µS/cm',kind==='hd'?70:52,145);
-    g.fillStyle='#ffd166';g.fillRect(170,124,70,12);g.fillStyle='#33e3cf';g.fillRect(170,124,46,12);});
-  return new THREE.MeshStandardMaterial({map:tex,emissive:'#ffffff',emissiveMap:tex,emissiveIntensity:.85,roughness:.35});
-}
-function gaugeMat(){return new THREE.MeshStandardMaterial({roughness:.4,map:canvasTex(128,128,(g)=>{g.fillStyle='#f7f9fa';g.beginPath();g.arc(64,64,62,0,7);g.fill();g.strokeStyle='#22313d';g.lineWidth=5;g.stroke();g.lineWidth=3;for(let i=0;i<=10;i++){const a=Math.PI*.75+i*Math.PI*1.5/10;g.beginPath();g.moveTo(64+Math.cos(a)*44,64+Math.sin(a)*44);g.lineTo(64+Math.cos(a)*54,64+Math.sin(a)*54);g.stroke();}g.strokeStyle='#d9483b';g.lineWidth=4;g.beginPath();g.moveTo(64,64);g.lineTo(64+Math.cos(-0.6)*46,64+Math.sin(-0.6)*46);g.stroke();})});}
 function casters(g,xs,zs,y,dark,steel,r=.045){for(const x of xs)for(const z of zs){add(g,cylG(.012,.012,.07,8),steel,x,y-.035,z);const w=add(g,cylG(r,r,.035,18),dark,x,r,z);w.rotation.z=Math.PI/2;}}
 
-/* ---------- โมเดลเครื่องไตเทียม (รูปทรงทั่วไป ไม่อิงยี่ห้อ) ---------- */
-function buildHD(color){
-  const g=new THREE.Group(),shell=M('#eef2f5',.08,.32),shell2=M('#dbe3e9',.08,.4),dark=M('#1f2c36',.3,.5),steel=M('#b9c6cf',.85,.22),acc=M(color,.25,.35),blue=M('#3d7fd0',.05,.25),white=M('#f8fafb',.02,.45);
-  add(g,rbox(.76,.1,.68,.05),dark,0,.17,0);casters(g,[-.3,.3],[-.27,.27],.13,dark,steel);
-  add(g,rbox(.6,.52,.52,.06),shell,0,.48,0);
-  add(g,rbox(.58,.04,.2,.02),shell2,0,.24,.33);
-  add(g,rbox(.2,.27,.15,.03),blue,-.13,.4,.32);add(g,cylG(.03,.03,.04),M('#c62f3a'),-.13,.555,.32);
-  add(g,rbox(.2,.27,.15,.03),white,.13,.4,.32);add(g,cylG(.03,.03,.04),M('#2f6fc6'),.13,.555,.32);
-  tubeAlong(g,[[-.13,.57,.32],[-.12,.68,.3],[-.08,.76,.24]],.008,M('#c62f3a',.1,.4));tubeAlong(g,[[.13,.57,.32],[.12,.68,.3],[.08,.76,.24]],.008,M('#2f6fc6',.1,.4));
-  add(g,rbox(.55,.06,.535,.03),acc,0,.76,0);
-  add(g,rbox(.54,.6,.46,.06),shell,0,1.08,-.02);
-  add(g,rbox(.48,.42,.04,.02),shell2,0,1.06,.21);
-  const pump=add(g,cylG(.08,.08,.035,36),dark,-.12,1.14,.245);pump.rotation.x=Math.PI/2;
-  const rotor=new THREE.Group();rotor.position.set(-.12,1.14,.268);g.add(rotor);add(rotor,rbox(.13,.026,.02,.01),acc);add(rotor,cylG(.018,.018,.03,12),steel).rotation.x=Math.PI/2;
-  add(g,rbox(.17,.05,.04,.012),white,.12,1.16,.24);add(g,rbox(.04,.05,.05,.01),dark,.04,1.16,.24);
-  for(let i=0;i<3;i++)add(g,cylG(.016,.016,.02,12),i===0?M('#2fe0c9'):dark,.06+i*.06,.94,.24).rotation.x=Math.PI/2;
-  add(g,cylG(.035,.035,.14,12),steel,0,1.43,-.02);
-  const head=new THREE.Group();head.position.set(0,1.62,.02);head.rotation.x=-.24;g.add(head);
-  add(head,rbox(.58,.38,.1,.05),dark);add(head,new THREE.PlaneGeometry(.47,.29),screenMat('hd',color),0,.005,.052);add(head,rbox(.58,.03,.102,.012),acc,0,-.19,0);
-  add(g,rbox(.24,.04,.04,.012),steel,.36,1.12,.04);
-  add(g,cylG(.04,.04,.34,24),M('#eef3ee',.02,.18),.47,1.12,.12);add(g,cylG(.045,.045,.04,24),M('#c62f3a'),.47,1.31,.12);add(g,cylG(.045,.045,.04,24),M('#2f6fc6'),.47,.93,.12);
-  const red=M('#c62f3a',.1,.4),bl=M('#2f6fc6',.1,.4);
-  tubeAlong(g,[[-.04,1.18,.27],[.12,1.32,.32],[.36,1.38,.22],[.47,1.33,.13]],.011,red);
-  tubeAlong(g,[[.47,.91,.13],[.4,.82,.3],[.1,.86,.34],[-.22,.94,.28]],.011,bl);
-  add(g,cylG(.012,.012,.78,8),steel,-.22,1.82,-.2);add(g,cylG(.006,.006,.22,8),steel,-.22,2.2,-.2).rotation.z=Math.PI/2;
-  tubeAlong(g,[[-.26,.78,-.24],[-.26,1.0,-.29],[.26,1.0,-.29],[.26,.78,-.24]],.013,steel);
-  return g;
+/* ---------- ชิ้นส่วนที่ใช้ร่วมกันของโมเดลจำลอง ---------- */
+function glassM(color='#e3f3f9',op=.32){return new THREE.MeshStandardMaterial({color,metalness:0,roughness:.08,transparent:true,opacity:op,depthWrite:false});}
+function glowM(color,i=1.4){return new THREE.MeshStandardMaterial({color:'#101820',emissive:color,emissiveIntensity:i,roughness:.35});}
+function addGlass(parent,geo,mat,x,y,z){const o=add(parent,geo,mat,x,y,z);o.castShadow=false;o.receiveShadow=false;o.renderOrder=2;return o;}
+function pin(list,parent,label,x,y,z,nx,ny,nz){const o=new THREE.Object3D();o.position.set(x,y,z);o.userData.n=new THREE.Vector3(nx,ny,nz).normalize();o.userData.label=label;parent.add(o);list.push(o);return o;}
+function byPriority(list,order){const r=l=>{const i=order.indexOf(l.userData.label);return i<0?99:i;};return list.sort((a,b)=>r(a)-r(b));}
+function hose(parent,pts,r,mat,endMat){const t=tubeAlong(parent,pts,r,mat);if(endMat){const p=pts.at(-1),q=pts.at(-2),d=new THREE.Vector3(p[0]-q[0],p[1]-q[1],p[2]-q[2]).normalize(),c=add(parent,cylG(r*1.5,r*1.5,.035,14),endMat,...p);c.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d);}return t;}
+
+/* ข้อมูลสดของเครื่องสำหรับหน้าจอและไฟสถานะ (อ่านใหม่ทุกวินาที จึงเปลี่ยนตามผลตรวจที่เพิ่งบันทึก) */
+function machineState(m){
+  if(!m)return null;
+  const live=(db.machines||[]).find(x=>x.id===m.id)||m,t=testsOf(live.id)[0];
+  return {m:live,h:health(live),test:t,ts:t?testStatus(t).overall:null,f:filterInfo(live),status:live.status||'',run:!live.status||live.status==='พร้อมใช้งาน'};
 }
-/* ---------- โมเดลระบบน้ำ RO เคลื่อนที่ ---------- */
-function buildRO(color){
-  const g=new THREE.Group(),shell=M('#eef2f5',.08,.32),shell2=M('#dbe3e9',.08,.4),dark=M('#1f2c36',.3,.5),steel=M('#b9c6cf',.85,.22),acc=M(color,.25,.35),white=M('#f8fafb',.02,.3),cart=M('#7fd0f0',.05,.12);
-  cart.transparent=true;cart.opacity=.75;
-  add(g,rbox(.84,.08,.58,.04),dark,0,.16,0);casters(g,[-.34,.34],[-.24,.24],.12,dark,steel,.055);
+const SCR_FONT='"IBM Plex Sans Thai","Noto Sans Thai","Leelawadee UI",Tahoma,Loma,sans-serif';
+const SCR_HEAD={spare:'#3C6E84',repair:'#E39A2B',gone:'#5b6670'};
+const TS_TXT={pass:['ผ่านเกณฑ์','#2fe0c9'],watch:['เฝ้าระวัง','#ffb740'],fail:['เกินเกณฑ์','#ff6b5c']};
+const kindOf=s=>!s||s.run?'run':s.status==='ส่งซ่อม'?'repair':s.status==='จำหน่ายแล้ว'?'gone':'spare';
+function lum(hex){const c=String(hex).replace('#','');if(c.length<6)return .5;const v=[0,2,4].map(i=>parseInt(c.slice(i,i+2),16)/255);return .2126*v[0]+.7152*v[1]+.0722*v[2];}
+function fitText(g,txt,max){txt=String(txt??'');if(g.measureText(txt).width<=max)return txt;let s=txt;while(s.length>1&&g.measureText(s+'…').width>max)s=s.slice(0,-1);return s+'…';}
+function fitFont(g,txt,max,size,weight){let z=size;g.font=`${weight} ${z}px ${SCR_FONT}`;while(z>size*.6&&g.measureText(txt).width>max){z-=1;g.font=`${weight} ${z}px ${SCR_FONT}`;}return fitText(g,txt,max);}
+function rr(g,x,y,w,h,r){g.beginPath();if(g.roundRect)g.roundRect(x,y,w,h,r);else g.rect(x,y,w,h);}
+function liveScreen(w,h,draw){
+  const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d'),tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=4;
+  const mat=new THREE.MeshBasicMaterial({map:tex,toneMapped:false});
+  return {mat,draw(...a){g.save();draw(g,w,h,...a);g.restore();tex.needsUpdate=true;}};
+}
+function scrHeader(g,w,h,s,title,accent){
+  g.fillStyle='#061f28';g.fillRect(0,0,w,h);
+  const k=kindOf(s),bg=k==='run'?accent:SCR_HEAD[k],hh=Math.round(h*.15);
+  g.fillStyle=bg;g.fillRect(0,0,w,hh);
+  g.fillStyle=lum(bg)>.55?'#062028':'#ffffff';g.textBaseline='middle';g.font=`700 ${Math.round(hh*.5)}px ${SCR_FONT}`;
+  const clock=new Date().toTimeString().slice(0,5);g.textAlign='right';g.fillText(clock,w-14,hh/2+1);
+  g.textAlign='left';g.fillText(fitText(g,title,w-g.measureText(clock).width-44),14,hh/2+1);
+  return hh;
+}
+function scrTile(g,x,y,w,h,label,value,col,sub,frac){
+  g.fillStyle='#0b2f3b';rr(g,x,y,w,h,Math.round(h*.1));g.fill();
+  g.textBaseline='middle';g.textAlign='left';
+  g.fillStyle='#86b9cc';g.font=`500 ${Math.round(h*.15)}px ${SCR_FONT}`;g.fillText(fitText(g,label,w-20),x+11,y+h*.2);
+  g.fillStyle=col;g.fillText(fitFont(g,value,w-20,Math.round(h*.25),700),x+11,y+h*.5);
+  if(sub){g.fillStyle='#a6c8d4';g.fillText(fitFont(g,sub,w-20,Math.round(h*.13),400),x+11,y+h*.78);}
+  if(frac!=null){const bw=w-22,by=y+h-9;g.fillStyle='#16465a';g.fillRect(x+11,by,bw,4);g.fillStyle=col;g.fillRect(x+11,by,Math.max(2,bw*Math.max(0,Math.min(1,frac))),4);}
+}
+function testTxt(s){
+  if(!s)return ['—','#a6c8d4',''];
+  if(!s.test)return ['ยังไม่มีผล','#a6c8d4','C/S และ Endotoxin'];
+  const v=TS_TXT[s.ts]||['บันทึกแล้ว','#e6f4f8'];return [v[0],v[1],'ตรวจ '+thDate(s.test.date)];
+}
+function filterTxt(s){
+  if(!s)return ['—','#a6c8d4','',null];
+  const f=s.f;
+  if(f.state==='none')return ['ไม่มี','#a6c8d4','ไม่ได้ติดตั้ง',null];
+  if(f.state==='nodata')return ['ยังไม่บันทึก','#ffb740','รอบันทึกครั้งแรก',null];
+  if(f.state==='nodue')return ['ไม่กำหนดรอบ','#e6f4f8','เปลี่ยน '+thDate(f.last.date),null];
+  if(f.state==='over')return ['เลย '+(-f.days)+' วัน','#ff6b5c','ครบ '+thDate(f.due),.02];
+  return ['เหลือ '+f.days+' วัน',f.state==='soon'?'#ffb740':'#2fe0c9','ครบ '+thDate(f.due),f.left];
+}
+function statusTxt(s){
+  if(!s)return ['—','#a6c8d4'];
+  const k=kindOf(s);return [s.status||'พร้อมใช้งาน',k==='run'?'#2fe0c9':k==='repair'?'#ffb740':'#cfe3ea'];
+}
+function scrFooter(g,w,h,s,y){
+  g.fillStyle='#0a2a35';g.fillRect(0,y,w,h-y);g.textBaseline='middle';g.font=`500 ${Math.round((h-y)*.42)}px ${SCR_FONT}`;g.fillStyle='#a6c8d4';
+  const m=s&&s.m,left=m&&m.code?'รหัส '+m.code:'รหัสครุภัณฑ์ —',right=m&&m.location?m.location:m&&m.yearBE?'ซื้อปี พ.ศ. '+m.yearBE:'';
+  g.textAlign='right';const rw=right?Math.min(g.measureText(right).width,w*.45):0;if(right)g.fillText(fitText(g,right,w*.45),w-14,y+(h-y)/2);
+  g.textAlign='left';g.fillText(fitText(g,left,w-rw-44),14,y+(h-y)/2);
+}
+
+/* ---------- โมเดลเครื่องไตเทียม (ทรงตู้สูงตามโค้ดต้นแบบที่ผู้ใช้ส่งมา ไม่มีชื่อยี่ห้อ) ---------- */
+const BEACON={ok:'#10b981',watch:'#f59e0b',bad:'#ef4444',mute:'#94a3b8'};
+function hdFilterLines(s){
+  if(!s)return {head:'Bacteria filter',frac:.62,col:'#0284c7',l1:'รหัสครุภัณฑ์ —',l2:''};
+  const f=s.f,m=s.m,code='รหัส '+(m.code||'—'),where=m.location||(m.yearBE?'ซื้อปี พ.ศ. '+m.yearBE:'');
+  if(f.state==='none')return {head:'Bacteria filter · ไม่มี',frac:null,l1:code,l2:where};
+  if(f.state==='nodata')return {head:'Bacteria filter · ยังไม่บันทึก',frac:null,l1:code,l2:where};
+  if(f.state==='nodue')return {head:'Bacteria filter · ไม่กำหนดรอบ',frac:null,l1:'เปลี่ยนล่าสุด '+thDate(f.last.date),l2:code};
+  const head=f.state==='over'?'Bacteria filter · เลยกำหนด '+(-f.days)+' วัน':'Bacteria filter · เหลือ '+f.days+' วัน';
+  return {head,frac:f.state==='over'?1:f.left,col:f.state==='over'?'#dc2626':f.state==='soon'?'#d97706':'#0284c7',l1:'เปลี่ยนล่าสุด '+thDate(f.last.date)+' · ครบ '+thDate(f.due),l2:code};
+}
+function drawHDScreen(g,w,h,s,t){
+  const k=kindOf(s),run=k==='run',bad=s&&s.h==='bad',F=(wt,px)=>{g.font=`${wt} ${px}px ${SCR_FONT}`;};
+  g.fillStyle='#f8fafc';g.fillRect(0,0,w,h);g.textBaseline='middle';g.textAlign='left';
+  /* แถบบน */
+  g.fillStyle=bad?'#dc2626':run?'#0284c7':k==='repair'?'#d97706':'#64748b';g.fillRect(0,0,w,42);
+  g.fillStyle='#ffffff';F(700,16);const clock=new Date().toTimeString().slice(0,5);g.textAlign='right';g.fillText(clock,w-14,22);g.textAlign='left';
+  F(700,18);g.fillText(fitText(g,s?s.m.name+(run?'':' · '+s.status):'เครื่องไตเทียม',w-110),16,22);
+  /* กราฟสัญญาณ */
+  g.fillStyle='#fef9c3';g.fillRect(16,56,275,145);g.strokeStyle='#cbd5e1';g.lineWidth=2;g.strokeRect(16,56,275,145);
+  g.strokeStyle='#fde047';g.lineWidth=1;g.beginPath();for(let x=40;x<285;x+=35){g.moveTo(x,56);g.lineTo(x,201);}for(let y=80;y<200;y+=30){g.moveTo(16,y);g.lineTo(291,y);}g.stroke();
+  g.strokeStyle=run?'#ca8a04':'#a8a29e';g.lineWidth=3;g.beginPath();const sp=run?t*4:0;
+  for(let x=0;x<=265;x+=4){const y=130+(run?Math.sin(x*.08-sp)*24+Math.sin(x*.22-sp*1.5)*8:0);x?g.lineTo(20+x,y):g.moveTo(20+x,y);}g.stroke();
+  if(!run){g.fillStyle='#78716c';F(600,15);g.textAlign='center';g.fillText('หยุดการทำงาน',153,96);g.textAlign='left';}
+  /* กล่องฟิลเตอร์ */
+  const fl=hdFilterLines(s);
+  g.fillStyle='#e0f2fe';g.fillRect(16,214,275,110);g.strokeStyle='#bae6fd';g.lineWidth=2;g.strokeRect(16,214,275,110);
+  g.fillStyle='#0369a1';g.fillText(fitFont(g,fl.head,255,14,700),26,234);
+  g.fillStyle='#bae6fd';g.fillRect(26,248,255,16);if(fl.frac!=null){g.fillStyle=fl.col;g.fillRect(26,248,Math.max(3,255*Math.min(1,fl.frac)),16);}
+  g.fillStyle='#0f172a';g.fillText(fitFont(g,fl.l1,255,13,500),26,285);g.fillText(fitFont(g,fl.l2,255,13,500),26,306);
+  /* ค่าด้านขวา */
+  const ts=s&&s.ts,tv=!s?['—','#475569','#e2e8f0']:!s.test?['ยังไม่มีผล','#475569','#e2e8f0']:ts==='fail'?['เกินเกณฑ์','#dc2626','#fee2e2']:ts==='watch'?['เฝ้าระวัง','#b45309','#fef3c7']:ts==='pass'?['ผ่านเกณฑ์','#059669','#d1fae5']:['บันทึกแล้ว','#0f172a','#e2e8f0'];
+  const sv=!s?['—','#475569','#e2e8f0']:run?[s.status||'พร้อมใช้งาน','#2563eb','#dbeafe']:k==='repair'?[s.status,'#b45309','#fef3c7']:[s.status,'#475569','#e2e8f0'];
+  const ag=s?age(s.m):null;
+  [['ผลตรวจล่าสุด',...tv],['วันที่ตรวจ',s&&s.test?thDate(s.test.date):'—','#0f172a','#e2e8f0'],['สถานะเครื่อง',...sv],['อายุการใช้งาน',ag===null?'—':ag+' ปี','#0f172a','#e2e8f0']].forEach(([lb,v,c,bg],i)=>{
+    const py=56+i*68;g.fillStyle=bg;g.fillRect(305,py,190,58);g.strokeStyle='#cbd5e1';g.lineWidth=2;g.strokeRect(305,py,190,58);
+    g.fillStyle='#475569';F(700,12);g.fillText(lb,315,py+15);g.fillStyle=c;g.fillText(fitFont(g,v,170,23,700),315,py+39);});
+  /* แท็บล่าง */
+  ['เลือด','น้ำยา','UF','เฮพาริน','ระบบ'].forEach((tb,i)=>{const x=16+i*97;g.fillStyle=i===0?'#0284c7':'#cbd5e1';g.fillRect(x,338,91,34);g.fillStyle=i===0?'#ffffff':'#1e293b';F(700,13);g.textAlign='center';g.fillText(tb,x+45.5,355);g.textAlign='left';});
+}
+function buildHD(color,m){
+  const root=new THREE.Group(),g=new THREE.Group(),A=[];g.scale.setScalar(.7);root.add(g);
+  const std=(c,r,mt)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:mt});
+  const white=std('#f4f6f9',.35,.05),grey=std('#dbe1e8',.45,.08),darkP=std('#1e293b',.5,.1),rubber=std('#111827',.85,.05),chrome=std('#e2e8f0',.18,.88),
+    blue=std('#3b82f6',.35,.1),blueGrey=std('#7c98b6',.4,.1),red=std('#dc2626',.25,.05),clear=glassM('#ffffff',.42),acc=std(color,.35,.15);
+  const R=(w,h,d,r,mat,x,y,z,p=g)=>add(p,rbox(w,h,d,r),mat,x,y,z);
+  const rotX=geo=>{geo.rotateX(Math.PI/2);return geo;},rotZ=geo=>{geo.rotateZ(Math.PI/2);return geo;};
+  /* ก. ฐานและล้อ */
+  R(.96,.14,1.05,.035,white,0,.17,.02);R(.98,.04,1.07,.015,grey,0,.12,.02);
+  R(.28,.045,.14,.012,blueGrey,0,.115,.54).rotation.x=.15;
+  add(g,rotZ(cylG(.014,.014,.44,16)),chrome,0,.16,-.54);
+  [[-.36,.38],[.36,.38],[-.36,-.36],[.36,-.36]].forEach(([x,z])=>{add(g,rotZ(cylG(.055,.055,.036,24)),rubber,x,.055,z);add(g,rotZ(cylG(.026,.026,.04,16)),grey,x,.055,z);R(.052,.07,.075,.01,white,x,.09,z-.01);});
+  pin(A,g,'เบรกล้อ',0,.14,.6,0,.5,1);
+  /* ข. ตัวตู้ล่าง ตู้บน และโดมไฟสถานะ */
+  R(.76,1.05,.76,.03,white,0,.76,0);R(.74,.04,.74,.01,acc,0,1.3,0);R(.78,1.15,.76,.03,white,0,1.88,0);
+  add(g,cylG(.14,.16,.03,24),grey,0,2.46,.02);
+  const beacon=new THREE.MeshStandardMaterial({color:'#34d399',emissive:BEACON.ok,emissiveIntensity:.9,roughness:.2,transparent:true,opacity:.9});
+  const dome=add(g,new THREE.SphereGeometry(.14,24,16,0,Math.PI*2,0,Math.PI/2),beacon,0,2.47,.02);dome.scale.set(1.2,.55,.9);dome.castShadow=false;
+  pin(A,g,'ไฟแสดงสถานะ',.1,2.52,.08,0,1,.6);
+  /* ค. จอและแผงปุ่ม */
+  R(.72,.52,.06,.015,grey,0,2.15,.37);
+  const scr=liveScreen(512,384,(c,w,h,s,t)=>drawHDScreen(c,w,h,s,t));
+  add(g,new THREE.PlaneGeometry(.46,.35),scr.mat,.01,2.18,.402).castShadow=false;
+  R(.09,.44,.02,.005,white,-.29,2.15,.4);
+  const ledM={red:new THREE.MeshBasicMaterial({color:'#ef4444'}),amber:new THREE.MeshBasicMaterial({color:'#f59e0b'}),green:new THREE.MeshBasicMaterial({color:'#10b981'})};
+  for(let i=0;i<8;i++)add(g,new THREE.BoxGeometry(.028,.014,.01),i<2?ledM.red:i<4?ledM.amber:ledM.green,-.29,2.31-i*.045,.411).castShadow=false;
+  R(.09,.35,.02,.005,white,.295,2.19,.4);
+  for(let r=0;r<5;r++)for(let c=0;c<2;c++)add(g,new THREE.BoxGeometry(.026,.022,.012),r===0?blue:grey,.278+c*.034,2.31-r*.048,.412);
+  add(g,rotX(cylG(.026,.028,.032,24)),blue,.22,1.95,.412);
+  for(let b=0;b<5;b++)add(g,new THREE.BoxGeometry(.045,.024,.015),b===4?blue:white,-.18+b*.075,1.95,.405);
+  pin(A,g,'จอแสดงผล',.2,2.3,.41,0,0,1);
+  /* ง. ปั๊มเลือด ปั๊มเฮพาริน และตัวตรวจจับฟองอากาศ */
+  R(.22,.22,.06,.02,grey,-.22,1.54,.39);
+  add(g,rotX(cylG(.088,.088,.04,32)),darkP,-.22,1.54,.42);
+  const rotor=new THREE.Group();rotor.position.set(-.22,1.54,.435);g.add(rotor);
+  R(.13,.035,.025,.008,white,0,0,0,rotor);[-.052,.052].forEach(x=>add(rotor,rotX(cylG(.022,.022,.032,20)),blueGrey,x,0,.005));add(rotor,rotX(cylG(.02,.02,.035,16)),blue);
+  addGlass(g,rotX(cylG(.092,.092,.012,32)),clear,-.22,1.54,.462);
+  pin(A,g,'ปั๊มเลือด',-.22,1.62,.47,0,0,1);
+  R(.08,.26,.06,.015,grey,0,1.56,.39);
+  addGlass(g,cylG(.024,.024,.18,20),clear,0,1.58,.435);add(g,cylG(.019,.019,.07,16),std('#9b1c1c',.3,.05),0,1.525,.435).castShadow=false;
+  pin(A,g,'กระเปาะดักอากาศ',0,1.66,.46,0,0,1);
+  R(.18,.09,.07,.015,grey,.21,1.58,.4);
+  addGlass(g,rotZ(cylG(.018,.018,.11,16)),clear,.19,1.58,.445);
+  const plunger=add(g,rotZ(cylG(.015,.015,.06,16)),blue,.26,1.58,.445);
+  pin(A,g,'ปั๊มเฮพาริน',.21,1.62,.44,0,.3,1);
+  R(.09,.07,.065,.012,white,.21,1.43,.4);
+  const led=add(g,new THREE.SphereGeometry(.008,12,8),glowM('#3dff8a',1.6),.24,1.45,.434);
+  pin(A,g,'ตัวตรวจจับฟองอากาศ',.21,1.41,.435,0,0,1);
+  /* จ. แผงน้ำยาด้านหน้า ตลับไบคาร์บอเนต และสายน้ำยา */
+  R(.68,.16,.18,.025,white,0,1.15,.42);
+  addGlass(g,cylG(.068,.062,.28,24),clear,-.26,.93,.45);add(g,cylG(.062,.056,.22,24),white,-.26,.91,.45).castShadow=false;
+  [1.08,.78].forEach(y=>add(g,cylG(.072,.072,.032,24),blue,-.26,y,.45));
+  pin(A,g,'ตลับไบคาร์บอเนต',-.26,.93,.52,0,0,1);
+  tubeAlong(g,[[-.04,1.08,.48],[-.07,.75,.54],[.02,.68,.52],[.06,1.08,.46]],.011,red);
+  tubeAlong(g,[[.1,1.08,.48],[.08,.72,.55],[.18,.69,.51],[.2,1.08,.46]],.011,blue);
+  /* ฉ. เสาน้ำเกลือด้านขวา */
+  [1.05,1.65,2.25].forEach(y=>R(.14,.06,.09,.01,grey,.43,y,.14));
+  add(g,cylG(.018,.018,1.75,20),chrome,.48,1.55,.14);add(g,cylG(.012,.012,.95,20),chrome,.48,2.45,.14);
+  add(g,rotZ(cylG(.008,.008,.34,12)),chrome,.48,2.92,.14);add(g,rotX(cylG(.008,.008,.34,12)),chrome,.48,2.92,.14);
+  tubeAlong(g,[[.4,1.35,.05],[.54,1.05,-.05],[.52,.78,-.18],[.39,1.1,-.22]],.009,grey);
+  pin(A,g,'เสาน้ำเกลือ',.48,2.7,.14,1,0,.6);
+  /* ช. รีโมทพร้อมสายขดด้านซ้าย */
+  R(.08,.14,.11,.015,grey,-.42,1.92,.16);
+  R(.065,.24,.095,.015,white,-.47,1.95,.16).rotation.z=.08;
+  add(g,new THREE.BoxGeometry(.01,.19,.068),blue,-.502,1.95,.16).rotation.z=.08;
+  const helix=[];for(let i=0;i<=120;i++){const t=i/120,a=t*Math.PI*32;helix.push([-.45+Math.cos(a)*.022,1.82-t*.56,.16+Math.sin(a)*.022]);}
+  add(g,new THREE.TubeGeometry(new THREE.CatmullRomCurve3(helix.map(p=>new THREE.Vector3(...p))),140,.006,8,false),rubber);
+  pin(A,g,'รีโมทควบคุม',-.51,2.0,.16,-1,0,.3);
+  /* ซ. ด้านหลัง: ช่องระบายอากาศ ครีบระบายความร้อน ตัวกรองเลือด */
+  R(.62,.26,.03,.01,grey,0,2.22,-.38);
+  for(let v=0;v<5;v++)add(g,new THREE.BoxGeometry(.56,.018,.015),grey,0,1.98-v*.035,-.385);
+  add(g,new THREE.BoxGeometry(.24,.24,.05),darkP,.16,1.56,-.39);for(let f=-5;f<=5;f++)add(g,new THREE.BoxGeometry(.008,.23,.035),rubber,.16+f*.02,1.56,-.415);
+  R(.11,.04,.12,.008,grey,.22,1.18,-.42);R(.11,.04,.12,.008,grey,.22,.86,-.42);
+  addGlass(g,cylG(.046,.046,.36,24),clear,.22,1.02,-.45);add(g,cylG(.038,.038,.3,24),white,.22,1.02,-.45).castShadow=false;
+  [1.21,.83].forEach(y=>add(g,cylG(.052,.052,.038,24),blue,.22,y,-.45));
+  tubeAlong(g,[[.22,1.24,-.45],[.02,1.32,-.48],[-.18,.95,-.49],[-.08,.42,-.46],[.15,.38,-.41]],.01,grey);
+  pin(A,g,'ตัวกรองเลือด',.22,1.02,-.5,0,0,-1);
+  if(m&&m.hasFilter){
+    R(.11,.035,.1,.008,grey,-.24,1.2,-.42);R(.11,.035,.1,.008,grey,-.24,.82,-.42);
+    add(g,cylG(.04,.04,.34,24),std('#f8fafc',.3,.05),-.24,1.01,-.46);[1.19,.83].forEach(y=>add(g,cylG(.046,.046,.03,24),acc,-.24,y,-.46));
+    tubeAlong(g,[[-.24,1.21,-.46],[-.3,1.3,-.44],[-.3,1.36,-.39]],.008,grey);
+    pin(A,g,'Bacteria filter',-.24,1.05,-.5,0,0,-1);
+  }
+  /* การเคลื่อนไหวและข้อมูลสด */
+  let s=machineState(m),stT=0,scT=1,hp=0;
+  const DIM={red:'#3b1414',amber:'#3a2a0c',green:'#0c3326'},FULL={red:'#ef4444',amber:'#f59e0b',green:'#10b981'};
+  const setLeds=(hh,blink)=>{const on={red:hh==='bad'&&blink,amber:hh==='watch',green:hh==='ok'};Object.keys(ledM).forEach(k=>ledM[k].color.set(on[k]?FULL[k]:DIM[k]));if(hh==='mute')ledM.green.color.set('#2a6b56');};
+  const paintBeacon=()=>{const hh=s?s.h:'ok';beacon.emissive.set(BEACON[hh]||BEACON.ok);beacon.color.set(BEACON[hh]||BEACON.ok);};
+  paintBeacon();setLeds(s?s.h:'ok',true);scr.draw(s,0);
+  root.userData.anchors=byPriority(A,['จอแสดงผล','ไฟแสดงสถานะ','ปั๊มเลือด','ตัวกรองเลือด','ปั๊มเฮพาริน','ตัวตรวจจับฟองอากาศ','กระเปาะดักอากาศ','ตลับไบคาร์บอเนต','Bacteria filter','รีโมทควบคุม','เสาน้ำเกลือ','เบรกล้อ']);
+  root.userData.tick=(dt,t)=>{
+    stT+=dt;if(stT>1){stT=0;s=machineState(m);paintBeacon();}
+    const run=kindOf(s)==='run',hh=s?s.h:'ok',blink=Math.sin(t*6)>0;
+    if(run&&!reduceMotion){rotor.rotation.z-=dt*2.6;hp=(hp+dt*.004)%.045;plunger.position.x=.26-hp;}
+    beacon.emissiveIntensity=hh==='bad'?(blink?1.6:.15):.85+Math.sin(t*2)*.15;setLeds(hh,blink);
+    led.material.emissiveIntensity=run?(Math.sin(t*4)>0?1.8:.35):.12;
+    scT+=dt;if(scT>(reduceMotion?1:.08)){scT=0;scr.draw(s,reduceMotion?0:t);}
+  };
+  return root;
+}
+
+/* ---------- โมเดลระบบน้ำ RO เคลื่อนที่ (รูปทรงทั่วไป ไม่อิงยี่ห้อ) ---------- */
+function drawROScreen(g,w,h,s,t,accent){
+  const hh=scrHeader(g,w,h,s,s?s.m.name:'ระบบน้ำ RO เคลื่อนที่',accent),pad=10,ty=hh+9,th=Math.round(h*.38),tw=(w-pad*3)/2;
+  const a=testTxt(s),c=statusTxt(s),run=kindOf(s)==='run';
+  scrTile(g,pad,ty,tw,th,'ผลตรวจล่าสุด',a[0],a[1],a[2]);
+  scrTile(g,pad*2+tw,ty,tw,th,'สถานะเครื่อง',c[0],c[1],run?'ผลิตน้ำได้':'');
+  const fy=ty+th+Math.round(h*.13),names=['น้ำเข้า','กรอง','RO','จ่ายน้ำ'],n=names.length,nx=i=>pad+30+i*(w-pad*2-60)/(n-1);
+  g.strokeStyle=run?'#2a8fb0':'#2a4c5a';g.lineWidth=5;g.beginPath();g.moveTo(nx(0),fy);g.lineTo(nx(n-1),fy);g.stroke();
+  if(run){g.fillStyle='#bff3ff';const span=nx(n-1)-nx(0);for(let k=0;k<7;k++){const x=nx(0)+((t*.22+k/7)%1)*span;g.beginPath();g.arc(x,fy,3.4,0,7);g.fill();}}
+  names.forEach((nm,i)=>{const x=nx(i);g.fillStyle=run?(i===2?accent:'#1f6f8b'):'#2a4c5a';g.beginPath();g.arc(x,fy,11,0,7);g.fill();g.strokeStyle='#061f28';g.lineWidth=2;g.stroke();
+    g.fillStyle='#cfe8f0';g.font=`600 ${Math.round(h*.075)}px ${SCR_FONT}`;g.textAlign='center';g.textBaseline='middle';g.fillText(nm,x,fy+h*.1);});
+  scrFooter(g,w,h,s,Math.round(h*.87));
+}
+function gaugeFace(){return new THREE.MeshStandardMaterial({roughness:.4,map:canvasTex(128,128,(g)=>{g.fillStyle='#f7f9fa';g.beginPath();g.arc(64,64,62,0,7);g.fill();g.strokeStyle='#22313d';g.lineWidth=5;g.stroke();g.lineWidth=3;for(let i=0;i<=10;i++){const a=Math.PI*.75+i*Math.PI*1.5/10;g.beginPath();g.moveTo(64+Math.cos(a)*44,64+Math.sin(a)*44);g.lineTo(64+Math.cos(a)*54,64+Math.sin(a)*54);g.stroke();}g.strokeStyle='#2fbf71';g.lineWidth=6;g.beginPath();g.arc(64,64,49,Math.PI*1.25,Math.PI*1.85);g.stroke();})});}
+function gloss(color,rough=.3,metal=.05,coat=.7){return new THREE.MeshPhysicalMaterial({color,roughness:rough,metalness:metal,clearcoat:coat,clearcoatRoughness:.12});}
+function buildRO(color,m){
+  const root=new THREE.Group(),g=new THREE.Group(),A=[];g.scale.setScalar(1.3);root.add(g);
+  const shell=gloss('#f1f4f7',.28,.04,.75),shell2=gloss('#dde5eb',.36,.05,.45),dark=gloss('#1d2a33',.42,.2,.35),dark2=M('#2b3a45',.25,.5),steel=M('#c4d0d8',.9,.2),acc=gloss(color,.3,.1,.8),white=gloss('#f8fafb',.25,.02,.6),rubber=M('#151d23',.05,.85),gl=new THREE.MeshStandardMaterial({color:'#ffffff',roughness:.04,metalness:0,transparent:true,opacity:.14,depthWrite:false});
+  /* ฐานและล้อ */
+  add(g,rbox(.84,.08,.58,.04),dark,0,.16,0);add(g,rbox(.87,.026,.61,.012),rubber,0,.13,0);casters(g,[-.34,.34],[-.24,.24],.12,rubber,steel,.055);
+  add(g,rbox(.07,.02,.06,.008),M('#e39a2b',.1,.5),-.34,.1,.3);add(g,rbox(.02,.02,.05,.006),steel,-.34,.1,.255);
+  pin(A,g,'เบรกล้อ',-.34,.115,.33,0,.5,1);
+  /* ตัวเครื่องและแผงหน้า */
   add(g,rbox(.76,.58,.5,.07),shell,0,.48,0);
+  add(g,rbox(.765,.006,.505,.004),dark2,0,.215,0);
+  add(g,rbox(.645,.425,.02,.035),dark2,0,.5,.246);
   add(g,rbox(.62,.4,.03,.03),shell2,0,.5,.255);
-  add(g,new THREE.PlaneGeometry(.2,.12),screenMat('ro',color),-.16,.6,.272);
-  const gm=gaugeMat();[.08,.22].forEach(x=>{add(g,cylG(.055,.055,.03,32),dark,x,.6,.268).rotation.x=Math.PI/2;add(g,new THREE.CircleGeometry(.047,32),gm,x,.6,.285);});
-  for(let i=0;i<4;i++)add(g,cylG(.016,.016,.02,12),i===0?M('#2fe0c9'):dark,-.22+i*.07,.4,.27).rotation.x=Math.PI/2;
+  [-1,1].forEach(sx=>{add(g,rbox(.014,.07,.24,.02),dark2,sx*.379,.64,0);add(g,rbox(.01,.03,.2,.012),rubber,sx*.383,.64,0);});
+  for(let i=0;i<7;i++)add(g,rbox(.008,.014,.16,.004),dark2,.381,.36+i*.028,0);
+  add(g,rbox(.3,.2,.016,.012),dark,-.15,.57,.266);
+  const scr=liveScreen(384,240,(c,w,h,s,t)=>drawROScreen(c,w,h,s,t,color));
+  add(g,new THREE.PlaneGeometry(.27,.17),scr.mat,-.15,.57,.275).castShadow=false;addGlass(g,new THREE.PlaneGeometry(.28,.18),gl,-.15,.57,.2765);
+  pin(A,g,'จอแสดงผล',-.05,.63,.277,0,0,1);
+  const face=gaugeFace(),needles=[];
+  [.09,.22].forEach(x=>{add(g,cylG(.055,.055,.03,32),dark,x,.6,.268).rotation.x=Math.PI/2;add(g,new THREE.CircleGeometry(.047,32),face,x,.6,.285);
+    add(g,new THREE.TorusGeometry(.053,.006,10,40),steel,x,.6,.285);const dome=addGlass(g,new THREE.SphereGeometry(.05,28,10,0,Math.PI*2,0,Math.PI/2),gl,x,.6,.284);dome.rotation.x=Math.PI/2;dome.scale.set(1,1,.22);dome.renderOrder=3;
+    const nd=new THREE.Group();nd.position.set(x,.6,.288);g.add(nd);const ng=new THREE.BoxGeometry(.0035,.04,.002);ng.translate(0,.017,0);add(nd,ng,M('#d9483b',.1,.4)).castShadow=false;add(nd,cylG(.006,.006,.004,12),dark).rotation.x=Math.PI/2;needles.push(nd);});
+  pin(A,g,'เกจวัดแรงดัน',.155,.665,.29,0,0,1);
+  const leds=[0,1,2].map(i=>add(g,cylG(.014,.014,.02,12),glowM(i===0?'#3dff8a':i===1?'#3c8dde':'#ffb740',.2),-.24+i*.065,.4,.27));leds.forEach(l=>{l.rotation.x=Math.PI/2;add(g,new THREE.TorusGeometry(.017,.003,8,20),steel,l.position.x,.4,.28);});
+  const pwr=add(g,cylG(.022,.022,.02,20),glowM('#2fbf71',1),.2,.4,.272);pwr.rotation.x=Math.PI/2;add(g,new THREE.TorusGeometry(.026,.004,8,24),steel,.2,.4,.276);
   add(g,rbox(.765,.045,.505,.02),acc,0,.28,0);
+  const light=glowM(RING.ok,1.5);add(g,rbox(.3,.022,.03,.008),light,0,.735,.255);
+  pin(A,g,'ไฟแสดงสถานะ',.15,.745,.272,0,.4,1);
+  /* ชุดเมมเบรน RO ด้านบน */
   add(g,rbox(.8,.04,.54,.02),steel,0,.79,0);
-  [-.1,.12].forEach(z=>{const h=add(g,cylG(.078,.078,.64,32),white,0,.89,z);h.rotation.z=Math.PI/2;[-.33,.33].forEach(x=>{const c=add(g,cylG(.085,.085,.05,32),steel,x,.89,z);c.rotation.z=Math.PI/2;});});
+  [-.1,.12].forEach(z=>{const h=add(g,cylG(.078,.078,.64,32),white,0,.89,z);h.rotation.z=Math.PI/2;[-.33,.33].forEach(x=>{const c=add(g,cylG(.085,.085,.05,32),steel,x,.89,z);c.rotation.z=Math.PI/2;});[-.2,.2].forEach(x=>{add(g,rbox(.03,.1,.03,.008),dark2,x,.83,z);const band=add(g,new THREE.TorusGeometry(.08,.006,10,40),steel,x,.89,z);band.rotation.y=Math.PI/2;});[-.36,.36].forEach(x=>{const r=add(g,new THREE.TorusGeometry(.07,.006,10,40),dark2,x,.89,z);r.rotation.y=Math.PI/2;});});
   add(g,rbox(.68,.03,.03,.01),acc,0,.98,-.1);
-  [-.12,.12].forEach(z=>{add(g,cylG(.065,.065,.34,28),cart,-.47,.5,z);add(g,cylG(.075,.075,.06,28),M('#2f6fc6',.1,.3),-.47,.7,z);add(g,cylG(.03,.03,.3,12),M('#ffffff',.05,.3),-.47,.5,z);});
+  pin(A,g,'เมมเบรน RO',-.05,.968,.12,0,1,.5);
+  /* ไส้กรองก่อนเข้า RO (ด้านซ้าย) พร้อมฟองอากาศเคลื่อนที่ */
+  const cart=glassM('#9fdcf3',.42),bubM=glassM('#ffffff',.75),bubbles=[];
+  [-.12,.12].forEach((z,k)=>{addGlass(g,cylG(.065,.065,.34,28),cart,-.47,.5,z);add(g,cylG(.075,.075,.06,28),M('#2f6fc6',.1,.3),-.47,.7,z);add(g,cylG(.07,.07,.03,28),dark2,-.47,.32,z);add(g,cylG(.03,.03,.3,12),M('#f6f2e8',.02,.6),-.47,.5,z).castShadow=false;
+    for(let i=0;i<6;i++){const b=add(g,new THREE.SphereGeometry(.0065,8,6),bubM,0,0,0);b.castShadow=false;b.userData={a:i/6*Math.PI*2+k,ph:i/6,x:-.47,z};bubbles.push(b);}});
   add(g,rbox(.04,.06,.4,.01),steel,-.4,.7,0);
+  tubeAlong(g,[[-.47,.73,-.12],[-.47,.77,0],[-.47,.73,.12]],.01,M('#2f6fc6',.1,.4));
   tubeAlong(g,[[-.47,.73,.12],[-.4,.86,.2],[-.32,.89,.12]],.012,M('#2f6fc6',.1,.4));
-  tubeAlong(g,[[.33,.89,-.1],[.44,.8,-.05],[.44,.5,.1],[.42,.3,.24],[.3,.22,.32]],.013,M('#2f6fc6',.1,.4));
+  pin(A,g,'ไส้กรองก่อนเข้า RO',-.535,.56,.12,-1,0,.25);
+  /* ท่อน้ำเข้า ท่อจ่ายน้ำ RO และท่อน้ำทิ้ง */
+  const conn=steel;
+  hose(g,[[-.47,.73,-.12],[-.56,.7,-.2],[-.6,.36,-.25],[-.56,.06,-.24],[-.42,.025,-.42],[-.22,.025,-.5]],.013,M('#2f6fc6',.1,.45),conn);
+  pin(A,g,'ท่อน้ำเข้า',-.6,.36,-.25,-1,0,-.3);
+  hose(g,[[.33,.89,-.1],[.44,.8,-.05],[.44,.5,.1],[.42,.3,.24],[.3,.15,.34],[.22,.025,.46],[.0,.025,.54]],.012,M('#8fd3f4',.05,.2),conn);
+  pin(A,g,'ท่อจ่ายน้ำ RO',.445,.5,.1,1,0,.3);
+  add(g,cylG(.016,.016,.04,14),steel,.3,.36,-.265).rotation.x=Math.PI/2;
+  hose(g,[[.3,.36,-.28],[.35,.25,-.33],[.33,.08,-.38],[.22,.025,-.48],[.02,.025,-.53]],.011,M('#59656e',.1,.5),conn);
+  pin(A,g,'ท่อน้ำทิ้ง',.35,.24,-.335,.3,0,-1);
   tubeAlong(g,[[-.3,.79,-.26],[-.3,1.12,-.3],[.3,1.12,-.3],[.3,.79,-.26]],.014,steel);
-  return g;
+  /* การเคลื่อนไหว */
+  let s=machineState(m),stT=0,scT=1;
+  const g0=.75*Math.PI;const setNeedles=(t,run)=>needles.forEach((nd,i)=>{const f=run?(i===0?.55:.42)+Math.sin(t*1.7+i*2)*.025+Math.sin(t*5.3+i)*.01:0;nd.rotation.z=g0-f*1.5*Math.PI;});
+  const placeBubbles=(t,run)=>bubbles.forEach(b=>{const u=b.userData,f=(t*.09+u.ph)%1;b.visible=run;b.position.set(u.x+Math.cos(u.a+f*2)*.048,.35+f*.3,u.z+Math.sin(u.a+f*2)*.048);});
+  const paint=t=>{light.emissive.set(RING[s?s.h:'ok']||RING.ok);scr.draw(s,t);const run=kindOf(s)==='run';setNeedles(0,run);placeBubbles(0,run&&!m);};paint(0);
+  root.userData.anchors=byPriority(A,['จอแสดงผล','ไฟแสดงสถานะ','เมมเบรน RO','ไส้กรองก่อนเข้า RO','เกจวัดแรงดัน','ท่อจ่ายน้ำ RO','ท่อน้ำเข้า','ท่อน้ำทิ้ง','เบรกล้อ']);
+  root.userData.tick=(dt,t)=>{
+    stT+=dt;if(stT>1){stT=0;s=machineState(m);light.emissive.set(RING[s?s.h:'ok']||RING.ok);}
+    const k=kindOf(s),run=k==='run',T=reduceMotion?0:t;
+    setNeedles(T,run);placeBubbles(T,run&&!reduceMotion);
+    light.emissiveIntensity=s&&s.h==='bad'?(Math.sin(t*6)>0?2.4:.25):1.45+Math.sin(t*2)*.3;
+    leds[0].material.emissiveIntensity=run?1.6:.15;leds[1].material.emissiveIntensity=run?(Math.sin(t*3)>0?1.5:.3):.15;leds[2].material.emissiveIntensity=k==='repair'?(Math.sin(t*5)>0?1.8:.3):.15;
+    pwr.material.emissiveIntensity=k==='gone'?.1:1;
+    scT+=dt;if(scT>(reduceMotion?1:.08)){scT=0;scr.draw(s,T);}
+  };
+  return root;
 }
-function buildModel(m){return typeOf(m)==='ro'?buildRO(m.color||'#19B5A5'):buildHD(m.color||'#19B5A5');}
+function buildModel(m,still){const c=m.color||'#19B5A5',src=still?null:m;return typeOf(m)==='ro'?buildRO(c,src):buildHD(c,src);}
 function disposeObj(o){o.traverse(n=>{if(n.geometry)n.geometry.dispose();if(n.material){(Array.isArray(n.material)?n.material:[n.material]).forEach(mt=>{if(mt.map)mt.map.dispose();mt.dispose();});}});}
-function addLights(scene){
-  scene.add(new THREE.HemisphereLight(0xdff2ff,0x0b2433,1.15));
-  const key=new THREE.DirectionalLight(0xffffff,2.6);key.position.set(2.4,5,3.6);key.castShadow=true;key.shadow.mapSize.set(1024,1024);Object.assign(key.shadow.camera,{left:-2,right:2,top:3,bottom:-1,near:.5,far:14});key.shadow.bias=-.0004;key.shadow.normalBias=.02;scene.add(key);
+function studioEnv(renderer){
+  try{
+    const pm=new THREE.PMREMGenerator(renderer),sc=new THREE.Scene(),box=new THREE.BoxGeometry(1,1,1),mats=[];
+    const room=new THREE.Mesh(new THREE.BoxGeometry(14,9,14),new THREE.MeshBasicMaterial({color:0x14303e,side:THREE.BackSide}));room.position.y=3.5;sc.add(room);mats.push(room.material);
+    const floor=new THREE.Mesh(box,new THREE.MeshBasicMaterial({color:0x0a1820}));floor.scale.set(14,.1,14);floor.position.y=-.9;sc.add(floor);mats.push(floor.material);
+    const soft=(c,i,sx,sy,sz,x,y,z)=>{const mt=new THREE.MeshBasicMaterial({color:new THREE.Color(c).multiplyScalar(i)});const o=new THREE.Mesh(box,mt);o.scale.set(sx,sy,sz);o.position.set(x,y,z);sc.add(o);mats.push(mt);};
+    soft('#ffffff',5,6,.1,4,0,7.8,0);soft('#d6ecff',2.6,.1,3.5,5,-6.8,3.2,0);soft('#fff3e2',2.2,.1,3,4,6.8,3,1.2);soft('#ffffff',1.6,5,2.4,.1,0,2.6,6.8);soft('#5fe0d2',1.4,5,1.2,.1,0,1.6,-6.8);
+    const rt=pm.fromScene(sc,.035);pm.dispose();box.dispose();room.geometry.dispose();mats.forEach(x=>x.dispose());
+    return rt.texture;
+  }catch(e){console.warn('สร้างแสงสะท้อนไม่ได้',e);return null;}
+}
+function addLights(scene,renderer,shadow=1024){
+  if(renderer){const env=studioEnv(renderer);if(env)scene.environment=env;}
+  scene.add(new THREE.HemisphereLight(0xdff2ff,0x0b2433,scene.environment?.6:1.15));
+  const key=new THREE.DirectionalLight(0xffffff,2.6);key.position.set(2.4,5,3.6);key.castShadow=true;key.shadow.mapSize.set(shadow,shadow);Object.assign(key.shadow.camera,{left:-2,right:2,top:3,bottom:-1,near:.5,far:14});key.shadow.bias=-.0004;key.shadow.normalBias=.02;scene.add(key);
   const rim=new THREE.DirectionalLight(0x5fe0d2,1.7);rim.position.set(-3,2.6,-3);scene.add(rim);
   const fill=new THREE.DirectionalLight(0x9cc7ff,.55);fill.position.set(-3,1.4,3);scene.add(fill);
 }
@@ -793,8 +1060,8 @@ function frameCamera(cam,model,aspect,minW=0){
 function initStage(){
   try{
     const canvas=document.createElement('canvas');canvas.setAttribute('aria-label','ภาพ 3 มิติของเครื่อง ลากเพื่อหมุน');
-    const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-    const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(30,1,.1,60);addLights(scene);
+    const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});renderer.setPixelRatio(Math.min(2,Math.max(1.5,devicePixelRatio||1)));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(30,1,.1,60);addLights(scene,renderer,2048);
     const glow=new THREE.Mesh(new THREE.CircleGeometry(2.1,64),new THREE.MeshBasicMaterial({map:canvasTex(256,256,(g,w,h)=>{const r=g.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2);r.addColorStop(0,'rgba(140,230,240,.32)');r.addColorStop(.5,'rgba(140,230,240,.1)');r.addColorStop(.82,'rgba(140,230,240,0)');g.fillStyle=r;g.fillRect(0,0,w,h);}),transparent:true,depthWrite:false}));glow.rotation.x=-Math.PI/2;glow.position.y=.002;scene.add(glow);
     const pivot=new THREE.Group();scene.add(pivot);
     const plat=new THREE.Group();pivot.add(plat);
@@ -803,7 +1070,7 @@ function initStage(){
     for(let i=0;i<24;i++){const a=i/24*Math.PI*2;add(plat,new THREE.BoxGeometry(.06,.004,.012),M('#5fd8c9',.2,.5),Math.cos(a)*.9,.114,Math.sin(a)*.9).rotation.y=-a;}
     const ringMat=new THREE.MeshStandardMaterial({color:'#0c1820',emissive:RING.ok,emissiveIntensity:1.6,roughness:.4});const ring=new THREE.Mesh(new THREE.TorusGeometry(1.08,.018,12,96),ringMat);ring.rotation.x=Math.PI/2;ring.position.y=.07;pivot.add(ring);
     const holder=new THREE.Group();holder.position.y=.112;pivot.add(holder);
-    three={renderer,scene,camera,pivot,holder,ring,ringMat,model:null,leaving:[],angle:.6,auto:true,lastTouch:0,drag:null,mount:null,w:0,h:0,camDist:6,camTarget:new THREE.Vector3(0,.9,0),wantDist:6,wantTarget:new THREE.Vector3(0,.9,0),visible:true,currentId:null};
+    three={renderer,scene,camera,pivot,holder,ring,ringMat,model:null,leaving:[],angle:.6,auto:true,lastTouch:0,drag:null,mount:null,w:0,h:0,camDist:6,camTarget:new THREE.Vector3(0,.9,0),wantDist:6,wantTarget:new THREE.Vector3(0,.9,0),visible:true,currentId:null,labelLayer:null,labelModel:null,labelsOn:labelPref()};
     canvas.addEventListener('pointerdown',e=>{three.drag={x:e.clientX,a:three.angle,moved:false};three.lastTouch=performance.now();canvas.setPointerCapture(e.pointerId);});
     canvas.addEventListener('pointermove',e=>{if(!three.drag)return;const dx=e.clientX-three.drag.x;if(Math.abs(dx)>3)three.drag.moved=true;three.angle=three.drag.a+dx*.011;three.lastTouch=performance.now();});
     const end=()=>{three.drag=null;three.lastTouch=performance.now();};canvas.addEventListener('pointerup',end);canvas.addEventListener('pointercancel',end);
@@ -819,12 +1086,37 @@ function initStage(){
       three.camDist+=(three.wantDist-three.camDist)*.08;three.camTarget.lerp(three.wantTarget,.08);
       const el=.2;camera.position.set(0,three.camTarget.y+Math.sin(el)*three.camDist*.9+.25,Math.cos(el)*three.camDist);camera.lookAt(three.camTarget);
       three.ringMat.emissiveIntensity=1.3+Math.sin(now/600)*.35;
-      renderer.render(scene,camera);};
+      if(three.model&&three.model.userData.tick)three.model.userData.tick(dt,now/1000);
+      renderer.render(scene,camera);updateLabels();};
     requestAnimationFrame(loop);
     return true;
   }catch(e){console.warn('WebGL ใช้ไม่ได้',e);three=null;return false;}
 }
-function mountStage(container){if(!three)return false;container.appendChild(three.renderer.domElement);three.mount=container;three.w=0;return true;}
+function mountStage(container){if(!three)return false;container.appendChild(three.renderer.domElement);three.mount=container;three.w=0;three.labelLayer=null;three.labelModel=null;return true;}
+/* ---------- ป้ายชี้ส่วนประกอบ (เฉพาะโมเดลจำลอง) ---------- */
+const LABEL_KEY='hd-equip-labels';
+function labelPref(){try{return localStorage.getItem(LABEL_KEY)!=='0';}catch{return true;}}
+function setLabels(on){if(!three)return;three.labelsOn=on;try{localStorage.setItem(LABEL_KEY,on?'1':'0');}catch{}}
+function setLabelLayer(el){if(!three)return;three.labelLayer=el;three.labelModel=null;}
+const _lv=new THREE.Vector3(),_ln=new THREE.Vector3(),_lc=new THREE.Vector3();
+function updateLabels(){
+  const L=three.labelLayer;if(!L||!L.isConnected)return;
+  const mdl=three.model,list=(three.labelsOn&&mdl&&mdl.userData.anchors)||[];
+  if(three.labelModel!==mdl||L.childElementCount!==list.length){three.labelModel=mdl;three.labelFrame=0;L.innerHTML=list.map(a=>`<div class="pin"><i></i><span>${esc(a.userData.label)}</span></div>`).join('');}
+  if(!list.length)return;
+  if(three.labelFrame++%90===0){list.forEach((a,i)=>{const sp=L.children[i].lastChild;a.userData.bw=sp.offsetWidth||90;a.userData.bh=sp.offsetHeight||24;});
+    const lr=L.getBoundingClientRect(),host=L.closest('.detail-stage');three.labelBlocks=host?[...host.querySelectorAll('.label-toggle,.photo-strip')].map(e=>{const r=e.getBoundingClientRect();return {x:r.left-lr.left,y:r.top-lr.top,w:r.width,h:r.height};}):[];}
+  const ready=mdl.userData.t>=1,w=three.w,h=three.h,cam=three.camera,placed=[...(three.labelBlocks||[])];
+  const over=r=>placed.some(q=>r.x<q.x+q.w+4&&q.x<r.x+r.w+4&&r.y<q.y+q.h+3&&q.y<r.y+r.h+3);
+  const hit=r=>r.x<4||r.x+r.w>w-4||r.y<4||r.y+r.h>h-4||over(r);
+  list.forEach((a,i)=>{const el=L.children[i];a.getWorldPosition(_lv);_ln.copy(a.userData.n).transformDirection(a.parent.matrixWorld);_lc.copy(cam.position).sub(_lv).normalize();
+    const facing=_ln.dot(_lc)>.2;_lv.project(cam);const x=(_lv.x*.5+.5)*w,y=(-_lv.y*.5+.5)*h;let on=ready&&facing&&_lv.z<1&&x>6&&x<w-6&&y>6&&y<h-6,pick=null;
+    if(on){const bw=a.userData.bw,bh=a.userData.bh,side=x<w/2,dot={x:x-7,y:y-7,w:14,h:14},box=(lf,dn)=>({x:lf?x+8-bw:x-8,y:dn?y+21:y-21-bh,w:bw,h:bh,lf,dn});
+      if(!over(dot)){placed.push(dot);pick=[box(side,false),box(side,true),box(!side,false),box(!side,true)].find(r=>!hit(r));if(pick)placed.push(pick);else placed.pop();}
+      if(!pick)on=false;}
+    if(el.classList.contains('on')!==on)el.classList.toggle('on',on);
+    if(on){el.classList.toggle('left',pick.lf);el.classList.toggle('down',pick.dn);el.style.transform=`translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;}});
+}
 /* ---------- เลือกระหว่างโมเดลสแกนจากเครื่องจริงกับโมเดลจำลอง ---------- */
 const modelCache=new Map();
 const modelRef=m=>(m.model3d&&m.model3d.length)?m.model3d.join('|'):'';
@@ -849,7 +1141,7 @@ function swapModel(model){
 }
 function showOnStage(m){
   if(!three||!m)return;three.ringMat.emissive.set(RING[health(m)]||RING.ok);
-  const ref=modelRef(m),key=m.id+'|'+(ref?ref+'|'+m.model3dRot:m.type+'|'+m.color);
+  const ref=modelRef(m),key=m.id+'|'+(ref?ref+'|'+m.model3dRot:m.type+'|'+m.color+'|'+(m.hasFilter?1:0));
   if(three.currentId===key)return;three.currentId=key;setModelStatus('');
   if(!ref){swapModel(buildModel(m));return;}
   if(three.model){three.leaving.push({obj:three.model,t:0});three.model=null;}
@@ -862,7 +1154,7 @@ function showOnStage(m){
 /* ---------- หน้าต่างดูตัวอย่างโมเดลก่อนบันทึก ---------- */
 function makePreview(box){
   const r=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});r.setPixelRatio(Math.min(devicePixelRatio||1,2));r.outputColorSpace=THREE.SRGBColorSpace;r.toneMapping=THREE.ACESFilmicToneMapping;r.toneMappingExposure=1.05;r.shadowMap.enabled=true;
-  const s=new THREE.Scene();addLights(s);const cam=new THREE.PerspectiveCamera(30,1,.1,60),pivot=new THREE.Group();s.add(pivot);
+  const s=new THREE.Scene();addLights(s,r);const cam=new THREE.PerspectiveCamera(30,1,.1,60),pivot=new THREE.Group();s.add(pivot);
   add(pivot,cylG(1.0,1.06,.06,64),M('#24485b',.55,.3),0,.03,0);
   box.innerHTML='';box.appendChild(r.domElement);r.domElement.className='preview-canvas';
   let obj=null,alive=true,angle=.6,last=performance.now(),drag=null,lastTouch=0;
@@ -890,8 +1182,8 @@ function makePreview(box){
 function snapshot(m){
   const key=typeOf(m)+'|'+(m.color||'');if(key in snapCache)return snapCache[key];
   try{
-    if(!snap){const r=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});r.setPixelRatio(1);r.setSize(480,360,false);r.outputColorSpace=THREE.SRGBColorSpace;r.toneMapping=THREE.ACESFilmicToneMapping;r.toneMappingExposure=1.1;const s=new THREE.Scene();addLights(s);snap={r,s,cam:new THREE.PerspectiveCamera(30,4/3,.1,60)};}
-    const model=buildModel(m);model.rotation.y=-.6;snap.s.add(model);const f=frameCamera(snap.cam,model,4/3);snap.cam.position.set(f.dist*.08,f.target.y+f.dist*.22,f.dist*.98);snap.cam.lookAt(f.target);
+    if(!snap){const r=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});r.setPixelRatio(1);r.setSize(480,360,false);r.outputColorSpace=THREE.SRGBColorSpace;r.toneMapping=THREE.ACESFilmicToneMapping;r.toneMappingExposure=1.1;const s=new THREE.Scene();addLights(s,r);snap={r,s,cam:new THREE.PerspectiveCamera(30,4/3,.1,60)};}
+    const model=buildModel(m,true);model.rotation.y=-.6;snap.s.add(model);const f=frameCamera(snap.cam,model,4/3);f.dist*=.86;snap.cam.position.set(f.dist*.08,f.target.y+f.dist*.22,f.dist*.98);snap.cam.lookAt(f.target);
     snap.r.render(snap.s,snap.cam);const url=snap.r.domElement.toDataURL('image/png');snap.s.remove(model);disposeObj(model);snapCache[key]=url;return url;
   }catch(e){snapCache[key]='';return '';}
 }
@@ -960,12 +1252,12 @@ function renderDetail(id){
   spec.push(['โมเดล 3 มิติ',(m.model3d||[]).length?'สแกนจากเครื่องจริง'+(m.model3dSize?' ('+mb(m.model3dSize)+')':''):'ภาพจำลองทั่วไป']);
   if(typeOf(m)==='hd')spec.push(['Bacteria filter',m.hasFilter?'มี'+(Number(m.filterDays)>0?' (เปลี่ยนทุก '+m.filterDays+' วัน)':''):'ไม่มี']);
   $('#app').innerHTML=`<div class="page"><div class="detail-head"><button class="back" id="back">‹ กลับแคตตาล็อก</button><div class="panel-actions"><button class="btn small" id="scanM">${(m.model3d||[]).length?'เปลี่ยนโมเดลสแกน 3 มิติ':'ใส่โมเดลสแกน 3 มิติ'}</button><button class="btn small" id="editM">แก้ไขข้อมูลเครื่อง</button><button class="btn small danger" id="delM">ลบเครื่อง</button></div></div>
-  <div class="detail-hero"><div class="detail-stage"><div class="stage-view" id="detailView"><div class="stage-hint">ลากเพื่อหมุนดูรอบเครื่อง</div></div>${m.photo?`<div class="photo-strip"><button id="photoBtn" aria-label="ดูรูปถ่ายเครื่อง"><img src="${esc(fileUrl(m.photo,'img'))}" alt="รูปถ่ายเครื่อง"></button></div>`:''}</div>
+  <div class="detail-hero"><div class="detail-stage"><div class="stage-view" id="detailView"><div class="part-labels" id="partLabels" aria-hidden="true"></div><div class="stage-hint">ลากเพื่อหมุนดูรอบเครื่อง</div></div>${(m.model3d||[]).length?'':`<button class="label-toggle" id="labelsBtn" aria-pressed="true">ป้ายชื่อส่วนประกอบ</button>`}${m.photo?`<div class="photo-strip"><button id="photoBtn" aria-label="ดูรูปถ่ายเครื่อง"><img src="${esc(fileUrl(m.photo,'img'))}" alt="รูปถ่ายเครื่อง"></button></div>`:''}</div>
   <div class="info-card"><p class="type">${TYPES[typeOf(m)].label}</p><h2>${esc(m.name)}</h2><p class="meta">${esc([m.brand,m.model].filter(Boolean).join(' ')||'ยังไม่ระบุยี่ห้อและรุ่น')}</p><div class="chips"><span class="chip ${STATUS_CHIP[m.status]||'mute'}">${esc(m.status||'ไม่ระบุสถานะ')}</span>${filterChip(m)}${lastTestChip(m)}</div>
   <dl class="spec">${spec.map(([k,v])=>`<div><dt>${k}</dt><dd>${v?esc(v):'—'}</dd></div>`).join('')}<div class="wide"><dt>หมายเหตุ</dt><dd>${m.note?esc(m.note):'—'}</dd></div></dl></div></div>
   ${typeOf(m)==='hd'?filterPanel(m,f):''}
   ${testsPanel(m,tests)}</div>`;
-  const view=$('#detailView');if(mountStage(view)){view.prepend(three.renderer.domElement);showOnStage(m);}else{const im=cardImage(m);view.insertAdjacentHTML('afterbegin',`<div class="stage-fallback"><img src="${esc(im.src)}" alt="${esc(m.name)}"></div>`);}
+  const view=$('#detailView');if(mountStage(view)){view.prepend(three.renderer.domElement);setLabelLayer($('#partLabels'));showOnStage(m);const lb=$('#labelsBtn');if(lb){const sync=()=>lb.setAttribute('aria-pressed',String(three.labelsOn));sync();lb.onclick=()=>{setLabels(!three.labelsOn);sync();};}}else{const lb=$('#labelsBtn');if(lb)lb.remove();const im=cardImage(m);view.insertAdjacentHTML('afterbegin',`<div class="stage-fallback"><img src="${esc(im.src)}" alt="${esc(m.name)}"></div>`);}
   $('#back').onclick=()=>{location.hash='#/';};$('#editM').onclick=()=>openMachineForm(m);$('#scanM').onclick=()=>openScanForm(m);$('#delM').onclick=()=>deleteMachine(m);
   const pb=$('#photoBtn');if(pb)pb.onclick=()=>openViewer(m.photo,'image/jpeg','รูปถ่าย '+m.name);
   bindDetail(m);
